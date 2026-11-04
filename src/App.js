@@ -71,7 +71,7 @@ export default function App(){
   <View style={{position:'absolute',left:ox,top:oy,width:m.w*k,height:m.h*k,overflow:'hidden'}}>
    <Image source={plate} style={{position:'absolute',left:0,top:0,width:m.w*k,height:m.h*k}} fadeDuration={0}/>
    {mapStyle&&<LiveMap style={mapStyle} rect={liveMap?mr:null} k={k} showRoute={sName!=='trackmode'}/>}
-   {liveMap&&<Image source={ART['fg_'+sName]} pointerEvents="none" fadeDuration={0} style={{position:'absolute',left:0,top:0,width:m.w*k,height:m.h*k}}/>}
+   {liveMap&&<View pointerEvents="none" style={{position:'absolute',left:0,top:0}}><Image source={ART['fg_'+sName]} fadeDuration={0} style={{width:m.w*k,height:m.h*k}}/></View>}
    <Sc c={c}/>
   </View></View>;
 }
@@ -93,12 +93,13 @@ function LiveMap({style,rect,k,showRoute}){const cam=useRef(null);const [shape,s
 const b=(k,x,y,w,h)=>({position:'absolute',left:x*k,top:y*k,width:w*k,height:h*k});
 const Hot=({k,x,y,w,h,on,label})=><Pressable accessibilityLabel={label} onPress={on} style={b(k,x,y,w,h)}/>;
 const Cov=({k,x,y,w,h,c='#000',r=0})=><View pointerEvents="none" style={[b(k,x,y,w,h),{backgroundColor:c,borderRadius:r*k}]}/>;
-const Pic=({k,src,x,y,w,h,r,o})=><Image source={src} fadeDuration={0} pointerEvents="none" style={[b(k,x,y,w,h),r?{borderRadius:r*k}:null,o!=null?{opacity:o}:null]}/>;
+/* Android ignores pointerEvents on Image, so any image on top swallows taps unless a View wraps it. */
+const Pic=({k,src,x,y,w,h,r,o})=><View pointerEvents="none" style={b(k,x,y,w,h)}><Image source={src} fadeDuration={0} style={[{width:w*k,height:h*k},r?{borderRadius:r*k}:null,o!=null?{opacity:o}:null]}/></View>;
 function Spr({k,sp,c,x,y,clip,o}){if(!sp)return null;const X=x==null?sp.x:x,Y=y==null?sp.y:y;
  if(clip)return <View pointerEvents="none" style={[b(k,X,Y,sp.w,clip),{overflow:'hidden'}]}><Image source={sp.img} fadeDuration={0} style={{width:sp.w*k,height:sp.h*k,tintColor:c||sp.c,opacity:o==null?1:o}}/></View>;
- return <Image pointerEvents="none" source={sp.img} fadeDuration={0} style={[b(k,X,Y,sp.w,sp.h),{tintColor:c||sp.c,opacity:o==null?1:o}]}/>}
+ return <View pointerEvents="none" style={b(k,X,Y,sp.w,sp.h)}><Image source={sp.img} fadeDuration={0} style={{width:sp.w*k,height:sp.h*k,tintColor:c||sp.c,opacity:o==null?1:o}}/></View>}
 const Cp=({k,x,y,w,t,size,c,align})=><Text pointerEvents="none" numberOfLines={1} style={{position:'absolute',left:x*k,top:y*k,width:w?w*k:undefined,fontSize:size*k,color:c,fontFamily:'serif',fontVariant:['small-caps'],textAlign:align||'left'}}>{t}</Text>;
-function Digits({k,t,cx,y,h,c}){const sc=h/27.3,ds=String(t).split('').map(d=>DIG[d]).filter(Boolean);let w=0;ds.forEach(d=>{w+=d.w*sc*.72});let x=cx-w/2;return ds.map((d,i)=>{const X=x-d.w*sc*.14;x+=d.w*sc*.72;return <Image key={i} source={d.img} fadeDuration={0} pointerEvents="none" style={[b(k,X,y,d.w*sc,d.h*sc),{tintColor:c}]}/>})}
+function Digits({k,t,cx,y,h,c}){const sc=h/27.3,ds=String(t).split('').map(d=>DIG[d]).filter(Boolean);let w=0;ds.forEach(d=>{w+=d.w*sc*.72});let x=cx-w/2;return ds.map((d,i)=>{const X=x-d.w*sc*.14;x+=d.w*sc*.72;return <View key={i} pointerEvents="none" style={b(k,X,y,d.w*sc,d.h*sc)}><Image source={d.img} fadeDuration={0} style={{width:d.w*sc*k,height:d.h*sc*k,tintColor:c}}/></View>})}
 const Bar=({k,x,y,w,h,bands})=>bands.map((bd,i)=><Cov key={i} k={k} x={x+i*w/bands.length} y={y} w={w/bands.length+.5} h={h} c={bd.c}/>);
 const toggleNote=(on)=>toast(on);
 
@@ -113,7 +114,7 @@ function Speedo({c,s}){const {k}=c,g=GEO[s],[,tick]=useState(0);const glow=useRe
   <View pointerEvents="none" style={[b(k,px,py,pw,ph),{borderRadius:12*k,backgroundColor:over?'#F27100':'#1CB000'}]}><Spr k={k} sp={spanOf(s,'65')} c={g.pillTxt} x={(pw-34.8)/2} y={-2.6}/></View>
   {st.started&&<View pointerEvents="none" style={[b(k,dx,dy,dw,dh),{backgroundColor:'#000',borderWidth:1.3,borderColor:'#88FA4E',borderRadius:dh*k}]}>
    <Text style={[dg,{left:'2%',width:'28%'}]}>{st.top.toFixed(2)}</Text><Text style={[dg,{left:'34%',width:'32%'}]}>{fmtTime(st.dur)}</Text><Text style={[dg,{left:'70%',width:'28%'}]}>{(st.top*KPH_PER_MPH).toFixed(2)}</Text></View>}
-  <Animated.Image source={ART.lss_glow} fadeDuration={0} pointerEvents="none" style={{position:'absolute',left:0,top:0,width:'100%',height:'100%',tintColor:col,opacity:glow,zIndex:9}} resizeMode="stretch"/></>}
+  <View pointerEvents="none" style={{position:'absolute',left:0,top:0,right:0,bottom:0,zIndex:9}}><Animated.Image source={ART.lss_glow} fadeDuration={0} style={{width:'100%',height:'100%',tintColor:col,opacity:glow}} resizeMode="stretch"/></View></>}
 
 function Pins({c,s}){const {k,rerender}=c,g=GEO[s].row;return <><Cov k={k} x={g.x-8} y={g.y-6} w={328} h={52}/>
  <View style={b(k,g.x-8,g.y-6,324,52)}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{width:(8+st.pinned.length*g.step)*k,height:52*k}}>
@@ -174,7 +175,7 @@ const SCREENS={
   {st.entry!==''&&<Digits k={k} t={st.entry} cx={197} y={513} h={24} c="#FFFFFF"/>}
   {Object.keys(DIG).map(x=>{const s=DIG[x];return <Hot key={x} k={k} x={s.x-8} y={s.y-6} w={s.w+16} h={s.h+12} on={()=>{if(st.entry.length<3){st.entry+=x;rerender()}}} label={'Digit '+x}/>})}
   <Hot k={k} x={130} y={435} w={135} h={70} on={confirm} label="Confirm"/>
-  {st.lssColor&&<Image source={ART.lss_glow} pointerEvents="none" fadeDuration={0} resizeMode="stretch" style={{position:'absolute',left:0,top:0,width:'100%',height:'100%',tintColor:st.lssColor}}/>}
+  {st.lssColor&&<View pointerEvents="none" style={{position:'absolute',left:0,top:0,right:0,bottom:0}}><Image source={ART.lss_glow} fadeDuration={0} resizeMode="stretch" style={{width:'100%',height:'100%',tintColor:st.lssColor}}/></View>}
   {!!st.lssName&&<Cov k={k} x={72} y={612} w={250} h={31} c="#351806" r={16}/>}
   <Field k={k} x={74} y={613} w={246} h={30} value={st.lssName} max={20} label="Filename" onChange={v=>{st.lssName=v;rerender()}}/>
   <Hot k={k} x={140} y={680} w={120} h={90} on={finish} label="Lets go"/></>},

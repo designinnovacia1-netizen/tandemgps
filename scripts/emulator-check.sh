@@ -42,6 +42,7 @@ backkey; backkey; backkey
 press "Lets go" 200 707 4; shot 08_trackmode_stationary
 press "Create LSS" 40 730; shot 09_create_lss
 tap 180 280; shot 10_create_lss_color
+tap 279 546; tap 144 500; tap 337 500; tap 197 470; shot 10b_create_lss_band
 backkey
 press Share 327 60; shot 11_prompt1
 press "Group two" 200 300; shot 12_prompt1_selected
