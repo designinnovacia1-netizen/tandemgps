@@ -4,8 +4,17 @@ set -u
 mkdir -p shots
 adb install -g app-release.apk
 adb logcat -c
-adb shell monkey -p com.tandemgps -c android.intent.category.LAUNCHER 1
-sleep 12
+# Launch crashes can be intermittent, so cold start the app repeatedly and count them.
+LAUNCH_FAILS=0
+for i in $(seq 1 8); do
+  adb shell am force-stop com.tandemgps; sleep 1
+  adb shell monkey -p com.tandemgps -c android.intent.category.LAUNCHER 1 >/dev/null; sleep 7
+  adb shell pidof com.tandemgps >/dev/null || LAUNCH_FAILS=$((LAUNCH_FAILS+1))
+done
+CRASHES=$(adb logcat -d -b crash | grep -c "Fatal signal\|FATAL EXCEPTION")
+echo "cold starts: 8, not running afterward: $LAUNCH_FAILS, crash entries: $CRASHES" | tee shots/launches.txt
+adb logcat -d -b crash > shots/crash_launches.txt
+adb shell pidof com.tandemgps >/dev/null || { adb shell monkey -p com.tandemgps -c android.intent.category.LAUNCHER 1 >/dev/null; sleep 7; }
 W=$(adb shell wm size | awk '{print $3}' | cut -dx -f1 | tr -d '\r'); H=$(adb shell wm size | awk '{print $3}' | cut -dx -f2 | tr -d '\r')
 K=$(awk "BEGIN{a=$W/397;b=$H/801;print (a<b)?a:b}"); OX=$(awk "BEGIN{print ($W-397*$K)/2}"); OY=$(awk "BEGIN{print ($H-801*$K)/2}")
 tap(){ adb shell input tap "$(awk "BEGIN{printf \"%d\",$OX+$1*$K}")" "$(awk "BEGIN{printf \"%d\",$OY+$2*$K}")"; sleep "${3:-2}"; }
@@ -41,4 +50,4 @@ sleep 7; shot 19_maplink_stopped
 adb logcat -d -b crash > shots/crash.txt
 adb logcat -d | grep -E "ReactNativeJS|AndroidRuntime" | grep -v "Mbgl-HttpRequest\|permanent error" | tail -120 > shots/js.txt
 adb shell pidof com.tandemgps > shots/alive.txt || echo DEAD > shots/alive.txt
-test -s shots/alive.txt && ! grep -q DEAD shots/alive.txt
+test -s shots/alive.txt && ! grep -q DEAD shots/alive.txt && [ "$LAUNCH_FAILS" -eq 0 ] && [ "$CRASHES" -eq 0 ]

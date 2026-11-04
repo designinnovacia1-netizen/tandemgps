@@ -35,6 +35,14 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    // React Native's network stack reads cookies through WebView. If its first use lands on a
+    // background network thread, Chromium can abort the whole app at launch. Start it here,
+    // on the main thread, before any request can run.
+    try {
+      android.webkit.CookieManager.getInstance()
+    } catch (e: Exception) {
+      android.util.Log.w("TandemGPS", "WebView is unavailable", e)
+    }
     SoLoader.init(this, OpenSourceMergedSoMapping)
     if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
       // If you opted-in for the New Architecture, we load the native entry point for this app.
