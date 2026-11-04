@@ -45,7 +45,10 @@ jobs:
           script: bash scripts/emulator-check.sh
       - name: Check what the screens show
         if: always()
-        run: pip install --quiet pillow && python3 scripts/check_shots.py
+        run: |
+          echo '--- walk'; cat shots/walk.txt || true
+          echo '--- app log'; cat shots/tg.txt || true
+          pip install --quiet pillow && python3 scripts/check_shots.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:

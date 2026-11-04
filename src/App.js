@@ -47,7 +47,7 @@ export default function App(){
   (async()=>{let ok=true;if(Platform.OS==='android'){const r=await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);ok=r===PermissionsAndroid.RESULTS.GRANTED}
    if(!ok){toast('TandemGPS needs location for the speedometer');return}if(dead)return;
    Geolocation.setRNConfiguration({skipPermissionRequests:true,locationProvider:'android'});
-   watch=Geolocation.watchPosition(p=>{const c=p.coords,pv=st.prevFix,here=[c.longitude,c.latitude];st.fixes=addFix(st.fixes,{t:p.timestamp,p:here,acc:c.accuracy});const v=fixSpeed(c.speed,st.fixes);st.lastFix=Date.now();
+   watch=Geolocation.watchPosition(p=>{const c=p.coords,pv=st.prevFix,here=[c.longitude,c.latitude];const now=Date.now();st.fixes=addFix(st.fixes,{t:now,p:here,acc:c.accuracy});const v=fixSpeed(c.speed,st.fixes);st.lastFix=now;console.log('TG fix',JSON.stringify({reported:c.speed,acc:c.accuracy,ts:p.timestamp,n:st.fixes.length,mps:v}));
      if(pv&&distance([pv.lon,pv.lat],here)>3){st.tb=c.heading!=null&&c.heading>=0&&(v||0)>1?c.heading:bearing([pv.lon,pv.lat],here);st.trail=st.trail.concat([here]).slice(-1500)}
      if(st.lng==null){st.lng=c.longitude;st.lat=c.latitude;st.trail=[here];rerender()}
      st.tlng=c.longitude;st.tlat=c.latitude;st.prevFix={lat:c.latitude,lon:c.longitude,t:p.timestamp};st.target=Math.max(0,(v||0)*MPH_PER_MS)},
@@ -66,7 +66,7 @@ export default function App(){
  const c={k,sName,nav,back,rerender};
  let plate=ART['plate_'+sName];if(sName==='create_lss'&&st.draft.length)plate=ART.plate_create_lss_empty;if(sName==='create_group')plate=ART.plate_create_group_empty;
  const mr=MAPRECTS[sName],liveMap=!!(mr&&mapStyle&&st.lng!=null);
- const Sc=SCREENS[sName];
+ const Sc=SCREENS[sName];console.log('TG screen',sName,'moving',st.moving,'speed',st.speed.toFixed(1),'top',st.top.toFixed(1));
  return <View style={{flex:1,backgroundColor:'#000'}}><StatusBar hidden/>
   <View style={{position:'absolute',left:ox,top:oy,width:m.w*k,height:m.h*k,overflow:'hidden'}}>
    <Image source={plate} style={{position:'absolute',left:0,top:0,width:m.w*k,height:m.h*k}} fadeDuration={0}/>
@@ -126,7 +126,7 @@ const pause=c=>()=>{st.paused=!st.paused;toast(st.paused?'Tracking paused':'Trac
 const startShare=c=>()=>{st.prev=st.screen;c.nav('prompt1')};
 
 function Row({k,g,s,x,y,on,avx,press}){const ox=x-avx+2,col=on?'#F27200':'#88FA4E',sp=g.custom?null:spanOf(s,g.n),a=spanOf(s,g.a),bb=spanOf(s,g.b);
- return <Pressable onPress={press} style={b(k,avx-2,y-16,345,64)}><Pic k={k} src={ART['av'+g.av]} x={2} y={10} w={52} h={52} r={26}/>
+ return <Pressable accessibilityLabel={g.n} onPress={press} style={b(k,avx-2,y-16,345,64)}><Pic k={k} src={ART['av'+g.av]} x={2} y={10} w={52} h={52} r={26}/>
   {sp?<Spr k={k} sp={sp} c={col} x={ox} y={16} clip={21}/>:<Cp k={k} x={ox} y={15} t={g.n} size={22} c={col}/>}
   {a?<Spr k={k} sp={a} c="#88FA4E" x={ox} y={38} clip={14}/>:<Cp k={k} x={ox} y={36} t={g.a} size={12} c="#88FA4E"/>}
   {bb?<Spr k={k} sp={bb} c="#88FA4E" x={ox} y={52} clip={14}/>:<Cp k={k} x={ox} y={50} t={g.b} size={12} c="#88FA4E"/>}</Pressable>}
@@ -156,7 +156,7 @@ const SCREENS={
   <Hot k={k} x={129} y={10} w={133} h={120} label="Pin" on={()=>{if(sel==null){toast('Highlight a ride, then tap the logo to pin');return}const r=st.rides[sel];if(!st.pinned.some(x=>x.id===r.id)){st.pinned=st.pinned.concat([r]);save();toast(r.name+' pinned')}else toast(r.name+' is already pinned')}}/>
   <Hot k={k} x={295} y={160} w={52} h={52} on={()=>missing('Create Map')} label="Create MapLink"/>
   <View style={b(k,40,226,340,296)}><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{height:Math.max(296,(st.rides.length*58+20))*k}}>{st.rides.map((r,i)=>{const on=sel===i,col=on?'#F27200':'#88FA4E',ny=(i<5?NY[i]:483.3+(i-4)*57.7)-226,by=(i<5?BY[i]:480.1+(i-4)*57.7)-226,lx=(i<5?LX[i]:67)-40,oy=by-2,sp=r.art?spanOf('manage_rides',r.name):null,ls=LET(r.letter),op=r.faded&&!on?.4:1;
-   return <Pressable key={r.id+i} onPress={()=>{st.sel=on?null:i;rerender()}} style={b(k,0,oy,340,i<4?NY[i+1]-NY[i]+6:64)}><View style={[b(k,lx-7,by-oy-1,42,42),{borderWidth:3*k,borderColor:r.c,borderRadius:9*k,opacity:op}]}/>{ls?<Spr k={k} sp={ls} c={r.c} x={lx} y={by-oy} o={op}/>:<Cp k={k} x={lx+3} y={by-oy} t={r.letter} size={28} c={r.c}/>}
+   return <Pressable key={r.id+i} accessibilityLabel={r.name} onPress={()=>{st.sel=on?null:i;rerender()}} style={b(k,0,oy,340,i<4?NY[i+1]-NY[i]+6:64)}><View style={[b(k,lx-7,by-oy-1,42,42),{borderWidth:3*k,borderColor:r.c,borderRadius:9*k,opacity:op}]}/>{ls?<Spr k={k} sp={ls} c={r.c} x={lx} y={by-oy} o={op}/>:<Cp k={k} x={lx+3} y={by-oy} t={r.letter} size={28} c={r.c}/>}
     {r.id==='biker'&&!on?<Pic k={k} src={ART.crop_biker} x={70} y={ny-oy-5} w={170} h={32}/>:sp?<Spr k={k} sp={sp} c={col} x={74.9} y={ny-oy}/>:<Cp k={k} x={75} y={ny-oy} t={r.name} size={21} c={col}/>}
     {on&&<Bar k={k} x={75} y={ny-oy+26} w={170} h={4} bands={r.bands}/>}</Pressable>})}</ScrollView></View>
   {sel!=null&&<><Pic k={k} src={ART.crop_manage_rides_share} x={25} y={146} w={85} h={85}/><Pic k={k} src={ART.crop_manage_rides_trash} x={28} y={625} w={95} h={95}/><Pic k={k} src={ART.crop_manage_rides_edit} x={285} y={625} w={100} h={100}/>

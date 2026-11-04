@@ -23,31 +23,37 @@ backkey(){ adb shell input keyevent 4; sleep 2; if ! adb shell dumpsys window | 
 LAT=29.4241
 fix(){ adb emu geo fix -98.4936 "$LAT" >/dev/null; }
 drive(){ for i in $(seq 1 "$1"); do LAT=$(awk "BEGIN{printf \"%.6f\",$LAT+$2}"); fix; sleep 1; done; }
+# Press a button by its accessibility label, falling back to screen coordinates if the UI will not dump.
+press(){ local label="$1" x="$2" y="$3" wait="${4:-2}"; local c
+  c=$(timeout 15 adb shell "uiautomator dump /sdcard/u.xml >/dev/null 2>&1; cat /sdcard/u.xml" 2>/dev/null | tr -d '\r' | python3 scripts/find_label.py "$label")
+  if [ -n "$c" ]; then echo "press $label by label at $c" >> shots/walk.txt; adb shell input tap $c; sleep "$wait"
+  else echo "press $label by coordinates $x,$y (label not found)" >> shots/walk.txt; tap "$x" "$y" "$wait"; fi; }
 fix; sleep 8
 shot 01_profile
-tap 200 500; shot 02_manage_rides
-tap 170 322; shot 03_manage_rides_selected
-tap 170 322; backkey
-tap 200 590; shot 04_manage_groups
-tap 200 730; shot 05_group_page
-tap 200 240; shot 06_group_member_selected
-tap 200 240; backkey
-tap 182 190; shot 07_create_group
-backkey; backkey
-tap 200 707 4; shot 08_trackmode_stationary
-tap 40 730; shot 09_create_lss
+press Rides 200 500; shot 02_manage_rides
+press SportRide 170 322; shot 03_manage_rides_selected
+press SportRide 170 322; backkey
+press Groups 200 590; shot 04_manage_groups
+press Visit 200 730; shot 05_group_page
+press "BILLY BOB" 200 240; shot 06_group_member_selected
+press "BILLY BOB" 200 240
+press Add 190 190; shot 07_create_group
+backkey; backkey; backkey
+press "Lets go" 200 707 4; shot 08_trackmode_stationary
+press "Create LSS" 40 730; shot 09_create_lss
 tap 180 280; shot 10_create_lss_color
-tap 144 500; backkey
-tap 327 60; shot 11_prompt1
-tap 200 260; shot 12_prompt1_selected
+backkey
+press Share 327 60; shot 11_prompt1
+press "Group two" 200 300; shot 12_prompt1_selected
 tap 5 620 3; shot 13_prompt2
-tap 60 80 2; shot 14_file_share
-tap 200 735 7; shot 15_shared_ride
-tap 195 735 4; shot 16_maplink_stationary
+press "Go back" 60 80 2; shot 14_file_share
+press Share 200 735 7; shot 15_shared_ride
+press "Lets go" 195 735 4; shot 16_maplink_stationary
 drive 12 0.00027; shot 17_maplink_moving_60mph
 drive 8 0.00047; shot 18_maplink_moving_115mph
-sleep 7; shot 19_maplink_stopped
+sleep 8; shot 19_maplink_stopped
 adb logcat -d -b crash > shots/crash.txt
-adb logcat -d | grep -E "ReactNativeJS|AndroidRuntime" | grep -v "Mbgl-HttpRequest\|permanent error" | tail -120 > shots/js.txt
+adb logcat -d | grep -E "ReactNativeJS|AndroidRuntime" | grep -v "Mbgl-HttpRequest\|permanent error" | tail -400 > shots/js.txt
+grep "TG " shots/js.txt | sed 's/.*ReactNativeJS: //' | tail -80 > shots/tg.txt
 adb shell pidof com.tandemgps > shots/alive.txt || echo DEAD > shots/alive.txt
 test -s shots/alive.txt && ! grep -q DEAD shots/alive.txt && [ "$LAUNCH_FAILS" -eq 0 ] && [ "$CRASHES" -eq 0 ]
