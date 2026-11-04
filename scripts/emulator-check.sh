@@ -19,7 +19,7 @@ W=$(adb shell wm size | awk '{print $3}' | cut -dx -f1 | tr -d '\r'); H=$(adb sh
 K=$(awk "BEGIN{a=$W/397;b=$H/801;print (a<b)?a:b}"); OX=$(awk "BEGIN{print ($W-397*$K)/2}"); OY=$(awk "BEGIN{print ($H-801*$K)/2}")
 tap(){ adb shell input tap "$(awk "BEGIN{printf \"%d\",$OX+$1*$K}")" "$(awk "BEGIN{printf \"%d\",$OY+$2*$K}")"; sleep "${3:-2}"; }
 shot(){ adb exec-out screencap -p > "shots/$1.png"; echo "$1 $(adb shell dumpsys window | grep -m1 mCurrentFocus | tr -d '\r')" >> shots/focus.txt; }
-backkey(){ adb shell input keyevent 4; sleep 2; }
+backkey(){ adb shell input keyevent 4; sleep 2; if ! adb shell dumpsys window | grep -m1 mCurrentFocus | grep -q com.tandemgps; then echo "left the app at back key" >> shots/focus.txt; adb shell monkey -p com.tandemgps -c android.intent.category.LAUNCHER 1 >/dev/null; sleep 5; fi; }
 LAT=29.4241
 fix(){ adb emu geo fix -98.4936 "$LAT" >/dev/null; }
 drive(){ for i in $(seq 1 "$1"); do LAT=$(awk "BEGIN{printf \"%.6f\",$LAT+$2}"); fix; sleep 1; done; }
