@@ -14,7 +14,9 @@ export function styleForApp(style){const layers=[];(style.layers||[]).forEach(l=
  else if(l.type==='line')o.paint['line-color']=id.includes('water')?'#262a2d':'#555555';
  else if(l.type==='symbol'&&l.layout&&l.layout['text-field']){o.paint['text-color']='#c4c4c4';o.paint['text-halo-color']='#222222';o.paint['text-halo-width']=1}
  layers.push(o)});return{...style,layers}}
-export function addFix(list,fix,windowMs=5000){return list.concat([fix]).filter(f=>fix.t-f.t<=windowMs)}
+/* Fastest believable speed in m/s, about 335 mph. Anything above it is a GPS jump, like a stale first fix. */
+export const MAX_MS=150;
+export function addFix(list,fix,windowMs=5000){const last=list[list.length-1];if(last&&last.p&&fix.p){const dt=(fix.t-last.t)/1000;if(dt<=0||distance(last.p,fix.p)/dt>MAX_MS)return[fix]}return list.concat([fix]).filter(f=>fix.t-f.t<=windowMs)}
 /* Speed in m/s. Many providers report 0 when they have no speed, so distance over recent fixes
    is the fallback. The floor stops GPS jitter on a parked bike from reading as motion. */
-export function fixSpeed(reported,fixes){if(reported!=null&&reported>0.5)return reported;const a=fixes[0],z=fixes[fixes.length-1];if(!a||a===z)return 0;const dt=(z.t-a.t)/1000;if(dt<=0)return 0;const d=distance(a.p,z.p);return d>Math.max(10,z.acc||0)?d/dt:0}
+export function fixSpeed(reported,fixes){if(reported!=null&&reported>0.5&&reported<=MAX_MS)return reported;const a=fixes[0],z=fixes[fixes.length-1];if(!a||a===z)return 0;const dt=(z.t-a.t)/1000;if(dt<=0)return 0;const d=distance(a.p,z.p);return d>Math.max(10,z.acc||0)?d/dt:0}
