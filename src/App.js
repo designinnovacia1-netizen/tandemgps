@@ -3,8 +3,8 @@ import {View,Image,Pressable,Text,TextInput,ScrollView,StatusBar,BackHandler,Lin
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Geolocation from '@react-native-community/geolocation';
 import MapLibreGL from '@maplibre/maplibre-react-native';
-import {ART,MAN,MAPRECTS,CARDS,LSS_GRID} from './art';
-import {bandOf,barFraction,bearing,distance,fmtTime,nextMotion,styleForApp,DEF,RB,MPH_PER_MS,KPH_PER_MPH} from './logic';
+import {ART,MAN,MAPRECTS,DASHRINGS,CARDS,LSS_GRID} from './art';
+import {addFix,bandOf,barFraction,bearing,distance,fixSpeed,fmtTime,nextMotion,styleForApp,DEF,RB,MPH_PER_MS,KPH_PER_MPH} from './logic';
 
 const GEO={
  trackmode:{bar:[26.7,685.7,351.3,10],pill:[170,158,60,24],dash:[15,555,376,52],row:{x:78,y:713,step:64},scaleY:663,pillTxt:'#FFFFFF'},
@@ -22,7 +22,7 @@ const M0=[{n:'BILLY BOB',a:'Member since October 2025',b:'12 Members',av:0},{n:'
 const st={screen:'profile',hist:[],rides:SEED_RIDES,pinned:SEED_PINS,active:SEED_PINS[1],mode:'trackmode',speed:0,target:0,top:0,dur:0,started:false,moving:false,paused:false,lowT:0,
  sel:null,groups:G0,gSel:0,members:M0,mSel:null,pick:{},stats:{'date created':1,distance:1,'top speed':1,participant:1,'team tag':1},comment:'',prev:null,
  lssColor:null,entry:'',draft:[],lssName:'',lssEdit:null,cgName:'',cgMood:'',cgEmail:'',cgShow:'tony@tandemgps.com',cgAdded:0,inbox:0,
- lng:null,lat:null,tlng:null,tlat:null,brg:0,trail:[],prevFix:null};
+ lng:null,lat:null,tlng:null,tlat:null,brg:0,trail:[],prevFix:null,fixes:[],lastFix:0};
 const toast=m=>Platform.OS==='android'&&ToastAndroid.show(m,ToastAndroid.SHORT);
 const missing=n=>toast(n+' screen is not in the guide yet');
 const web=()=>Linking.openURL('https://tandemgps.com/theportal');
@@ -47,15 +47,14 @@ export default function App(){
   (async()=>{let ok=true;if(Platform.OS==='android'){const r=await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);ok=r===PermissionsAndroid.RESULTS.GRANTED}
    if(!ok){toast('TandemGPS needs location for the speedometer');return}if(dead)return;
    Geolocation.setRNConfiguration({skipPermissionRequests:true,locationProvider:'android'});
-   watch=Geolocation.watchPosition(p=>{const c=p.coords,pv=st.prevFix;let v=c.speed;const here=[c.longitude,c.latitude];
-     if((v==null||v<0)&&pv){const dt=(p.timestamp-pv.t)/1000;v=dt>0?distance([pv.lon,pv.lat],here)/dt:0}
+   watch=Geolocation.watchPosition(p=>{const c=p.coords,pv=st.prevFix,here=[c.longitude,c.latitude];st.fixes=addFix(st.fixes,{t:p.timestamp,p:here,acc:c.accuracy});const v=fixSpeed(c.speed,st.fixes);st.lastFix=Date.now();
      if(pv&&distance([pv.lon,pv.lat],here)>3){st.tb=c.heading!=null&&c.heading>=0&&(v||0)>1?c.heading:bearing([pv.lon,pv.lat],here);st.trail=st.trail.concat([here]).slice(-1500)}
      if(st.lng==null){st.lng=c.longitude;st.lat=c.latitude;st.trail=[here];rerender()}
      st.tlng=c.longitude;st.tlat=c.latitude;st.prevFix={lat:c.latitude,lon:c.longitude,t:p.timestamp};st.target=Math.max(0,(v||0)*MPH_PER_MS)},
     ()=>{},{enableHighAccuracy:true,distanceFilter:0,interval:1000,fastestInterval:500,maximumAge:1000})})();
   return()=>{dead=true;if(watch!=null)Geolocation.clearWatch(watch)}},[]);
 
- useEffect(()=>{const id=setInterval(()=>{const dt=.1;st.speed+=(st.target-st.speed)*Math.min(1,dt*3);if(st.speed<.05&&st.target===0)st.speed=0;
+ useEffect(()=>{const id=setInterval(()=>{const dt=.1;if(st.lastFix&&Date.now()-st.lastFix>4000)st.target=0;st.speed+=(st.target-st.speed)*Math.min(1,dt*3);if(st.speed<.05&&st.target===0)st.speed=0;
    const was=st.moving,m=nextMotion(st.speed,st.paused,was,st.lowT,Date.now());st.moving=m.moving;st.lowT=m.lowT;
    if(st.moving&&!st.paused){if(!st.started){st.started=true;st.top=0;st.dur=0}st.dur+=dt;if(st.speed>st.top)st.top=st.speed}
    if(was!==st.moving){if(st.moving&&LOCK[st.screen]){st.hist=[];st.screen=st.mode}
@@ -107,12 +106,12 @@ function Speedo({c,s}){const {k}=c,g=GEO[s],[,tick]=useState(0);const glow=useRe
  useEffect(()=>{const id=setInterval(()=>tick(v=>v+1),200);return()=>clearInterval(id)},[]);
  const r=st.active,bds=r.bands,n=bds.length,custom=JSON.stringify(bds)!==JSON.stringify(DEF),i=bandOf(st.speed,bds),col=bds[i].c,on=st.moving&&!st.paused;
  useEffect(()=>{Animated.timing(glow,{toValue:on?1:0,duration:300,useNativeDriver:true}).start()},[on]);
- const [bx,by,bw,bh]=g.bar,fx=barFraction(st.speed,bds,custom?null:RB),[dx,dy,dw,dh]=g.dash,over=st.speed>POSTED_LIMIT,[px,py,pw,ph]=g.pill,fs=(15.5*dw/376+2)*k;
+ const [bx,by,bw,bh]=g.bar,fx=barFraction(st.speed,bds,custom?null:RB),[dx,dy,dw,dh]=DASHRINGS[s],over=st.speed>POSTED_LIMIT,[px,py,pw,ph]=g.pill,fs=(15.5*dw/360+1)*k;
  const dg={position:'absolute',top:0,bottom:0,textAlign:'center',textAlignVertical:'center',color:'#fff',fontWeight:'700',fontSize:fs,fontVariant:['tabular-nums']};
  return <>{custom&&<><Cov k={k} x={bx-16} y={g.scaleY-2} w={bw+40} h={by-g.scaleY+bh+4}/><Bar k={k} x={bx} y={by} w={bw} h={bh} bands={bds}/><Digits k={k} t="0" cx={bx+2} y={g.scaleY} h={17} c={s==='maplink_default'?'#88FA4E':'#FFFFFF'}/>{bds.map((bd,j)=><Digits key={j} k={k} t={bd.to} cx={bx+bw*(j+1)/n} y={g.scaleY} h={17} c={s==='maplink_default'?'#88FA4E':'#FFFFFF'}/>)}</>}
   {on&&<Cov k={k} x={bx+bw*fx} y={by} w={bw*(1-fx)} h={bh} c="rgba(0,0,0,.78)"/>}
   <View pointerEvents="none" style={[b(k,px,py,pw,ph),{borderRadius:12*k,backgroundColor:over?'#F27100':'#1CB000'}]}><Spr k={k} sp={spanOf(s,'65')} c={g.pillTxt} x={(pw-34.8)/2} y={-2.6}/></View>
-  {st.started&&<View pointerEvents="none" style={[b(k,dx+dw*.02,dy+dh*.03,dw*.96,dh*.95),{backgroundColor:'#000',borderWidth:1.3,borderColor:'#88FA4E',borderRadius:dh*k}]}>
+  {st.started&&<View pointerEvents="none" style={[b(k,dx,dy,dw,dh),{backgroundColor:'#000',borderWidth:1.3,borderColor:'#88FA4E',borderRadius:dh*k}]}>
    <Text style={[dg,{left:'2%',width:'28%'}]}>{st.top.toFixed(2)}</Text><Text style={[dg,{left:'34%',width:'32%'}]}>{fmtTime(st.dur)}</Text><Text style={[dg,{left:'70%',width:'28%'}]}>{(st.top*KPH_PER_MPH).toFixed(2)}</Text></View>}
   <Animated.Image source={ART.lss_glow} fadeDuration={0} pointerEvents="none" style={{position:'absolute',left:0,top:0,width:'100%',height:'100%',tintColor:col,opacity:glow,zIndex:9}} resizeMode="stretch"/></>}
 
