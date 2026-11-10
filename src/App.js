@@ -62,15 +62,12 @@ export default function App(){
 
  useEffect(()=>{let live=true;const tryStyle=async i=>{const urls=['https://tiles.openfreemap.org/styles/dark','https://tiles.openfreemap.org/styles/liberty'];try{const r=await fetch(urls[i]);if(!r.ok)throw 0;const j=await r.json();if(live)setMapStyle(styleForApp(j))}catch(e){if(i<urls.length-1)tryStyle(i+1);else if(live)setTimeout(()=>tryStyle(0),15000)}};tryStyle(0);return()=>{live=false}},[]);
 
- const sName=plateOf(),m=MAN[sName],k=Math.min(win.width/m.w,win.height/m.h),ox=(win.width-m.w*k)/2,oy=(win.height-m.h*k)/2;
+ const sName=plateOf(),m=MAN[sName],k=Math.min(win.width/m.w,win.height/m.h) /* one scale for both axes, so the client's art is never stretched */,ox=(win.width-m.w*k)/2,oy=(win.height-m.h*k)/2;
  const c={k,sName,nav,back,rerender};
  let plate=ART['plate_'+sName];if(sName==='create_lss'&&st.draft.length)plate=ART.plate_create_lss_empty;if(sName==='create_group')plate=ART.plate_create_group_empty;
  const mr=MAPRECTS[sName],liveMap=!!(mr&&mapStyle&&st.lng!=null);
  const Sc=SCREENS[sName];console.log('TG screen',sName,'moving',st.moving,'speed',st.speed.toFixed(1),'top',st.top.toFixed(1));
  return <View style={{flex:1,backgroundColor:'#000'}} onLayout={e=>{const l=e.nativeEvent.layout;if(!box||box.width!==l.width||box.height!==l.height)setBox({width:l.width,height:l.height})}}><StatusBar hidden/>
-  {/* Phones are rarely the art's exact shape, so the spare edge shows a soft copy of the same screen instead of black. */}
-  <Image source={plate} blurRadius={18} resizeMode="cover" fadeDuration={0} style={{position:'absolute',left:0,top:0,width:win.width,height:win.height}}/>
-  <View pointerEvents="none" style={{position:'absolute',left:0,top:0,width:win.width,height:win.height,backgroundColor:'rgba(0,0,0,.45)'}}/>
   <View style={{position:'absolute',left:ox,top:oy,width:m.w*k,height:m.h*k,overflow:'hidden'}}>
    <Image source={plate} style={{position:'absolute',left:0,top:0,width:m.w*k,height:m.h*k}} fadeDuration={0}/>
    {mapStyle&&<LiveMap style={mapStyle} rect={liveMap?mr:null} k={k} showRoute={sName!=='trackmode'}/>}
