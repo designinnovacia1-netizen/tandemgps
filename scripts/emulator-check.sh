@@ -65,8 +65,13 @@ sleep 3
 for step in "6 0.000040" "6 0.000121" "6 0.000202" "6 0.000283" "7 0.000404" "7 0.000606" "6 0.000404" "6 0.000202"; do drive $step; done
 for i in $(seq 1 10); do fix; sleep 1; done
 sleep 2
-kill -INT $REC 2>/dev/null; sleep 4
+# Stop the recorder on the phone itself so it finishes writing the file, then wait for it to exit.
+adb shell pkill -INT screenrecord; wait $REC 2>/dev/null; sleep 3
 adb pull /sdcard/demo.mp4 shots/speedometer_demo.mp4 || echo "no video" >> shots/walk.txt
+python3 - <<'PY' >> shots/walk.txt
+d=open('shots/speedometer_demo.mp4','rb').read()
+print('video has moov index:', b'moov' in d, 'bytes:', len(d))
+PY
 adb logcat -d -b crash > shots/crash.txt
 adb logcat -d | grep -E "ReactNativeJS|AndroidRuntime" | grep -v "Mbgl-HttpRequest\|permanent error" | tail -400 > shots/js.txt
 grep "TG " shots/js.txt | sed 's/.*ReactNativeJS: //' | tail -80 > shots/tg.txt
