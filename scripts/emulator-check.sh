@@ -53,6 +53,20 @@ press "Lets go" 195 735 4; shot 16_maplink_stationary
 drive 12 0.00027; shot 17_maplink_moving_60mph
 drive 8 0.00047; shot 18_maplink_moving_115mph
 sleep 8; shot 19_maplink_stopped
+# Demo video: fresh start on TrackMode, then a ride through every RangeBar band and a stop.
+adb shell am force-stop com.tandemgps; sleep 1
+adb shell monkey -p com.tandemgps -c android.intent.category.LAUNCHER 1 >/dev/null; sleep 8
+press "Lets go" 200 707 4
+adb shell rm -f /sdcard/demo.mp4
+adb shell screenrecord --bit-rate 8000000 --time-limit 120 /sdcard/demo.mp4 &
+REC=$!
+sleep 3
+# degrees of latitude per second: 0.000040 is about 10 mph, 0.000404 about 100 mph
+for step in "6 0.000040" "6 0.000121" "6 0.000202" "6 0.000283" "7 0.000404" "7 0.000606" "6 0.000404" "6 0.000202"; do drive $step; done
+for i in $(seq 1 10); do fix; sleep 1; done
+sleep 2
+kill -INT $REC 2>/dev/null; sleep 4
+adb pull /sdcard/demo.mp4 shots/speedometer_demo.mp4 || echo "no video" >> shots/walk.txt
 adb logcat -d -b crash > shots/crash.txt
 adb logcat -d | grep -E "ReactNativeJS|AndroidRuntime" | grep -v "Mbgl-HttpRequest\|permanent error" | tail -400 > shots/js.txt
 grep "TG " shots/js.txt | sed 's/.*ReactNativeJS: //' | tail -80 > shots/tg.txt

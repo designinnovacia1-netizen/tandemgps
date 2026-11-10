@@ -54,3 +54,9 @@ jobs:
         with:
           name: emulator-screenshots
           path: shots/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: speedometer-demo-video
+          path: shots/speedometer_demo.mp4
+          if-no-files-found: warn
