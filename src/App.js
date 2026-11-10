@@ -34,7 +34,7 @@ const plateOf=()=>st.screen==='maplink'?(st.moving?'maplink_motion':'maplink_def
 
 export default function App(){
  const [,setRev]=useState(0);const rerender=useRef(()=>setRev(v=>v+1)).current;
- const win=useWindowDimensions();const [mapStyle,setMapStyle]=useState(null);
+ const winD=useWindowDimensions();const [box,setBox]=useState(null);const win=box||winD;const [mapStyle,setMapStyle]=useState(null);
  const app=useRef(null);
  const nav=(s,noHist)=>{if(LOCK[s]&&st.moving)return;if(!noHist&&st.screen!==s)st.hist.push(st.screen);st.screen=s;rerender()};
  const back=()=>{const s=st.hist.pop();if(s&&!(LOCK[s]&&st.moving)){st.screen=s;rerender()}};
@@ -67,7 +67,10 @@ export default function App(){
  let plate=ART['plate_'+sName];if(sName==='create_lss'&&st.draft.length)plate=ART.plate_create_lss_empty;if(sName==='create_group')plate=ART.plate_create_group_empty;
  const mr=MAPRECTS[sName],liveMap=!!(mr&&mapStyle&&st.lng!=null);
  const Sc=SCREENS[sName];console.log('TG screen',sName,'moving',st.moving,'speed',st.speed.toFixed(1),'top',st.top.toFixed(1));
- return <View style={{flex:1,backgroundColor:'#000'}}><StatusBar hidden/>
+ return <View style={{flex:1,backgroundColor:'#000'}} onLayout={e=>{const l=e.nativeEvent.layout;if(!box||box.width!==l.width||box.height!==l.height)setBox({width:l.width,height:l.height})}}><StatusBar hidden/>
+  {/* Phones are rarely the art's exact shape, so the spare edge shows a soft copy of the same screen instead of black. */}
+  <Image source={plate} blurRadius={18} resizeMode="cover" fadeDuration={0} style={{position:'absolute',left:0,top:0,width:win.width,height:win.height}}/>
+  <View pointerEvents="none" style={{position:'absolute',left:0,top:0,width:win.width,height:win.height,backgroundColor:'rgba(0,0,0,.45)'}}/>
   <View style={{position:'absolute',left:ox,top:oy,width:m.w*k,height:m.h*k,overflow:'hidden'}}>
    <Image source={plate} style={{position:'absolute',left:0,top:0,width:m.w*k,height:m.h*k}} fadeDuration={0}/>
    {mapStyle&&<LiveMap style={mapStyle} rect={liveMap?mr:null} k={k} showRoute={sName!=='trackmode'}/>}
@@ -156,7 +159,7 @@ const SCREENS={
   return <><Hot k={k} x={11} y={10} w={102} h={102} on={back} label="Go back"/><Hot k={k} x={300} y={40} w={60} h={60} on={pause(c)} label="Pause"/>
   <Hot k={k} x={129} y={10} w={133} h={120} label="Pin" on={()=>{if(sel==null){toast('Highlight a ride, then tap the logo to pin');return}const r=st.rides[sel];if(!st.pinned.some(x=>x.id===r.id)){st.pinned=st.pinned.concat([r]);save();toast(r.name+' pinned')}else toast(r.name+' is already pinned')}}/>
   <Hot k={k} x={295} y={160} w={52} h={52} on={()=>missing('Create Map')} label="Create MapLink"/>
-  <View style={b(k,40,226,340,296)}><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{height:Math.max(296,(st.rides.length*58+20))*k}}>{st.rides.map((r,i)=>{const on=sel===i,col=on?'#F27200':'#88FA4E',ny=(i<5?NY[i]:483.3+(i-4)*57.7)-226,by=(i<5?BY[i]:480.1+(i-4)*57.7)-226,lx=(i<5?LX[i]:67)-40,oy=by-2,sp=r.art?spanOf('manage_rides',r.name):null,ls=LET(r.letter),op=r.faded&&!on?.4:1;
+  <View style={b(k,40,226,340,296)}><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{height:Math.max(296,(st.rides.length*58+20))*k}}>{st.rides.map((r,i)=>{const on=sel===i,col=on?'#F27200':'#88FA4E',ny=(i<5?NY[i]:483.3+(i-4)*57.7)-226,by=(i<5?BY[i]:480.1+(i-4)*57.7)-226,lx=(i<5?LX[i]:67)-40,oy=by-2,sp=spanOf('manage_rides',r.name),ls=LET(r.letter),op=r.faded&&!on?.4:1;
    return <Pressable key={r.id+i} accessibilityLabel={r.name} onPress={()=>{st.sel=on?null:i;rerender()}} style={b(k,0,oy,340,i<4?NY[i+1]-NY[i]+6:64)}><View style={[b(k,lx-7,by-oy-1,42,42),{borderWidth:3*k,borderColor:r.c,borderRadius:9*k,opacity:op}]}/>{ls?<Spr k={k} sp={ls} c={r.c} x={lx} y={by-oy} o={op}/>:<Cp k={k} x={lx+3} y={by-oy} t={r.letter} size={28} c={r.c}/>}
     {r.id==='biker'&&!on?<Pic k={k} src={ART.crop_biker} x={70} y={ny-oy-5} w={170} h={32}/>:sp?<Spr k={k} sp={sp} c={col} x={74.9} y={ny-oy}/>:<Cp k={k} x={75} y={ny-oy} t={r.name} size={21} c={col}/>}
     {on&&<Bar k={k} x={75} y={ny-oy+26} w={170} h={4} bands={r.bands}/>}</Pressable>})}</ScrollView></View>

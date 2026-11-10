@@ -2,6 +2,9 @@ package com.tandemgps
 
 import android.os.Bundle
 import android.view.WindowManager
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -19,6 +22,20 @@ class MainActivity : ReactActivity() {
     super.onCreate(null)
     // A speedometer must not let the screen sleep during a ride.
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+  }
+
+  override fun onWindowFocusChanged(hasFocus: Boolean) {
+    super.onWindowFocusChanged(hasFocus)
+    if (hasFocus) hideSystemBars()
+  }
+
+  // The client's screens run edge to edge, so the status and navigation bars stay hidden.
+  // A swipe from the edge shows them for a moment.
+  private fun hideSystemBars() {
+    WindowCompat.setDecorFitsSystemWindows(window, false)
+    val controller = WindowInsetsControllerCompat(window, window.decorView)
+    controller.hide(WindowInsetsCompat.Type.systemBars())
+    controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
   }
 
   /**

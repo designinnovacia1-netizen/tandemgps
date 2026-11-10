@@ -29,7 +29,7 @@ export const ART={
   crop_group_page_edit:require('../assets/crop_group_page_edit.jpg'),
   av0:require('../assets/av0.jpg'),
   av1:require('../assets/av1.jpg'),
-  crop_biker:require('../assets/crop_biker.jpg'),
+  crop_biker:require('../assets/crop_biker.png'),
   icon_hand:require('../assets/icon_hand.png'),
   lss_glow:require('../assets/lss_glow.png'),
 };
