@@ -162,7 +162,7 @@ const form={user:'',email:'',country:'',city:'',pw:'',pw2:'',terms:false,lemail:
 const SCREENS={
  login:({c})=>{const {k,nav,rerender}=c,set=key=>v=>{form[key]=v;rerender()};
   const go=async()=>{if(form.busy)return;if(!form.lemail.trim()||!form.lpw){toast('Enter your email and password');return}form.busy=true;const r=await login(form.lemail,form.lpw);form.busy=false;
-   if(r.error){toast(r.error);return}st.user=r.account;form.lpw='';st.hist=[];st.screen='profile';rerender()};
+   console.log('TG login',r.error||'ok');if(r.error){toast(r.error);return}st.user=r.account;form.lpw='';st.hist=[];st.screen='profile';rerender()};
   return <><FT k={k} t="TANDEM" x0={129} x1={284} y={165} cap={22} c={AG}/>
   <FT k={k} t="WELCOME TO THE" x0={119} x1={294} y={254} cap={14} c={AG} spread={false}/><FT k={k} t="TANDEM COMMUNITY!" x0={98} x1={314} y={279} cap={14} c={AG} spread={false}/>
   <AuthField k={k} x={50} y={359} w={316} h={41} label="Email" ph="ENTER EMAIL" phx={[163,250]} value={form.lemail} set={set('lemail')} keyboard="email-address"/>
@@ -171,7 +171,7 @@ const SCREENS={
   <FT k={k} t="LET'S GO" x0={182} x1={289} y={646} cap={14} c={AG}/><Hot k={k} x={102} y={627} w={210} h={55} on={go} label="Log in"/>
   <FT k={k} t="REGISTER" x0={163} x1={254} y={714} cap={10} c={AO}/><Hot k={k} x={140} y={704} w={136} h={32} on={()=>nav('join')} label="Register"/></>},
  join:({c})=>{const {k,nav,back,rerender}=c,[pick,setPick]=useState(false),set=key=>v=>{form[key]=v;rerender()};
-  const go=async()=>{if(form.busy)return;const e=checkJoin(form);if(e){toast(e);return}form.busy=true;const r=await register(form);form.busy=false;if(r.error){toast(r.error);return}
+  const go=async()=>{if(form.busy)return;const e=checkJoin(form);console.log('TG join',e||'ok');if(e){toast(e);return}form.busy=true;const r=await register(form);form.busy=false;if(r.error){toast(r.error);return}
    st.user=r.account;Object.assign(form,{user:'',email:'',country:'',city:'',pw:'',pw2:'',terms:false});toast('Choose Your Mood screen is not in the guide yet');st.hist=[];st.screen='profile';rerender()};
   return <><FT k={k} t="TANDEM" x0={129} x1={284} y={197} cap={22} c={AG}/>
   <AuthField k={k} x={49} y={255} w={318} h={41} label="User name" ph="USER NAME" phx={[167,244]} value={form.user} set={set('user')}/>
