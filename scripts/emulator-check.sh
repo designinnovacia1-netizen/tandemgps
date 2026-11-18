@@ -108,6 +108,6 @@ print('video has moov index:', b'moov' in d, 'bytes:', len(d))
 PY
 adb logcat -d -b crash > shots/crash.txt
 adb logcat -d | grep -E "ReactNativeJS|AndroidRuntime" | grep -v "Mbgl-HttpRequest\|permanent error" | tail -400 > shots/js.txt
-grep "TG " shots/js.txt | sed 's/.*ReactNativeJS: //' | tail -80 > shots/tg.txt
+adb logcat -d | grep "ReactNativeJS" | grep "TG " | grep -v "TG fix" | sed 's/.*ReactNativeJS: //' | awk '!seen[$0]++' > shots/tg.txt
 adb shell pidof com.tandemgps > shots/alive.txt || echo DEAD > shots/alive.txt
 test -s shots/alive.txt && ! grep -q DEAD shots/alive.txt && [ "$LAUNCH_FAILS" -eq 0 ] && [ "$CRASHES" -eq 0 ]
