@@ -3,9 +3,16 @@
 set -euo pipefail
 D=android/app/src/main/assets/fonts; mkdir -p "$D"; rm -rf /tmp/cc; mkdir -p /tmp/cc
 got=""
-for u in "https://www.fontsquirrel.com/fonts/download/copperplate-cc" "https://cowboycollective.cc/zip/CopperplateCC.zip" "http://cowboycollective.cc/zip/CopperplateCC"; do
+for u in "https://www.1001fonts.com/download/copperplate-cc.zip" "https://www.fontsquirrel.com/fonts/download/copperplate-cc" "https://cowboycollective.cc/zip/CopperplateCC.zip"; do
+  echo "FONT: trying $u"
   if curl -fsSL --retry 3 -A "Mozilla/5.0" -o /tmp/cc/font.zip "$u" && unzip -o -q /tmp/cc/font.zip -d /tmp/cc/x; then got="$u"; break; fi
 done
+if [ -z "$got" ]; then
+  mkdir -p /tmp/cc/x
+  # Heavy is the regular weight in this family.
+  curl -fsSL --retry 3 -A "Mozilla/5.0" -o /tmp/cc/x/CopperplateCC-Heavy.ttf https://st.1001fonts.net/download/font/copperplate-cc.heavy.ttf && \
+  curl -fsSL --retry 3 -A "Mozilla/5.0" -o /tmp/cc/x/CopperplateCC-Bold.ttf https://st.1001fonts.net/download/font/copperplate-cc.bold.ttf && got="1001fonts files"
+fi
 [ -n "$got" ] || { echo "FONT: could not download Copperplate CC"; exit 1; }
 echo "FONT: downloaded from $got"; find /tmp/cc/x -type f | sed 's/^/FONT file: /'
 pip install --quiet fonttools
