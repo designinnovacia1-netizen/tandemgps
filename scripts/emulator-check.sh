@@ -29,6 +29,25 @@ press(){ local label="$1" x="$2" y="$3" wait="${4:-2}"; local c
   if [ -n "$c" ]; then echo "press $label by label at $c" >> shots/walk.txt; adb shell input tap $c; sleep "$wait"
   else echo "press $label by coordinates $x,$y (label not found)" >> shots/walk.txt; tap "$x" "$y" "$wait"; fi; }
 fix; sleep 8
+typein(){ adb shell input text "$1"; sleep 1; }
+hidekb(){ if adb shell dumpsys input_method | grep -q "mInputShown=true"; then adb shell input keyevent 4; sleep 1; fi; }
+# Fresh install is logged out, so the app opens on Login. Register, log out, log back in.
+shot 00a_login
+press Register 208 720; shot 00b_join
+press "User name" 208 276; typein Razer; hidekb
+press Email 208 331; typein razer@tandemgps.com; hidekb
+press Country 208 389; sleep 1; shot 00c_country_list
+press "United States" 208 500
+press City 208 445; typein Greeley; hidekb
+press Password 208 500; typein ride2026; hidekb
+press "Confirm password" 208 560; typein ride2026; hidekb
+press "Agree to terms" 96 620; shot 00d_join_filled
+press Join 206 720 4
+shot 00e_after_join
+press Logout 74 65 3; shot 00f_logged_out
+press Email 208 380; typein razer@tandemgps.com; hidekb
+press Password 208 450; typein ride2026; hidekb
+press "Log in" 207 655 4
 shot 01_profile
 press Rides 200 500; shot 02_manage_rides
 press SportRide 170 322; shot 03_manage_rides_selected
@@ -53,16 +72,24 @@ press "Lets go" 195 735 4; shot 16_maplink_stationary
 drive 12 0.00027; shot 17_maplink_moving_60mph
 drive 8 0.00047; shot 18_maplink_moving_115mph
 sleep 8; shot 19_maplink_stopped
-# Demo video: fresh start on TrackMode, then a ride through every RangeBar band and a stop.
+# Demo video: create a speedo in Create LSS, then ride it on the connected TrackMode map.
 adb shell am force-stop com.tandemgps; sleep 1
 adb shell monkey -p com.tandemgps -c android.intent.category.LAUNCHER 1 >/dev/null; sleep 8
-press "Lets go" 200 707 4
+press Profile 200 70 3
+press Rides 200 500 3
+press "Lets go" 200 735 4
+press "Create LSS" 40 730 3
 adb shell rm -f /sdcard/demo.mp4
-adb shell screenrecord --bit-rate 8000000 --time-limit 120 /sdcard/demo.mp4 &
+adb shell screenrecord --bit-rate 8000000 --time-limit 170 /sdcard/demo.mp4 &
 REC=$!
 sleep 3
-# degrees of latitude per second: 0.000040 is about 10 mph, 0.000404 about 100 mph
-for step in "6 0.000040" "6 0.000121" "6 0.000202" "6 0.000283" "7 0.000404" "7 0.000606" "6 0.000404" "6 0.000202"; do drive $step; done
+digit(){ case $1 in 0) tap 337 501 1;; 1) tap 62 500 1;; 2) tap 80 531 1;; 3) tap 105 554 1;; 4) tap 136 571 1;; 5) tap 176 578 1;; 6) tap 213 578 1;; 7) tap 253 572 1;; 8) tap 288 554 1;; 9) tap 318 532 1;; esac; }
+band(){ tap "$1" "$2" 2; for d in $(echo "$3" | grep -o .); do digit "$d"; done; sleep 1; press Confirm 197 470 2; }
+band 254 312 30; band 194 300 60; band 290 276 90; band 278 360 200
+press Filename 197 628 2; typein "Demo%sSpeedo"; hidekb; sleep 2
+press "Lets go" 200 725 5
+# about 15, 45, 75, 120 mph, back down, stop
+for step in "7 0.000060" "7 0.000181" "7 0.000301" "8 0.000482" "6 0.000301" "6 0.000181"; do drive $step; done
 for i in $(seq 1 10); do fix; sleep 1; done
 sleep 2
 # Stop the recorder on the phone itself so it finishes writing the file, then wait for it to exit.

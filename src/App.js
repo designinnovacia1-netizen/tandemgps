@@ -4,6 +4,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Geolocation from '@react-native-community/geolocation';
 import MapLibreGL from '@maplibre/maplibre-react-native';
 import {ART,MAN,MAPRECTS,DASHRINGS,CARDS,LSS_GRID} from './art';
+import {checkJoin,register,login,current,logout} from './auth';
+import {COUNTRIES} from './countries';
+// Login and Join come from the client's screen mockups, phone frame and status bar removed.
+MAN.login={w:414,h:916,spans:[]};MAN.join={w:414,h:916,spans:[]};
+ART.plate_login=require('../assets/plate_login.jpg');ART.plate_join=require('../assets/plate_join.jpg');
+// Copperplate CC: an open-licensed digitization of Goudy's Copperplate Gothic, the face in the client's art.
+const FONT='CopperplateCC',FONT_B='CopperplateCC-Bold';
 import {addFix,bandOf,barFraction,bearing,distance,fixSpeed,fmtTime,nextMotion,styleForApp,DEF,RB,MPH_PER_MS,KPH_PER_MPH} from './logic';
 
 const GEO={
@@ -19,7 +26,7 @@ const SEED_PINS=[{id:'a',letter:'A',c:'#FF42A1',name:'A',bands:DEF},{id:'sport',
 const G0=[{n:'Group one',a:'Owner since October 2025',b:'12 Members',av:0},{n:'Group two',a:'Owner since August 2025',b:'10 Members',av:0},{n:'Group three',a:'Member since July 2025',b:'10 Members',av:1},{n:'Group four',a:'Member since July 2025',b:'10 Members',av:1},{n:'Group Five',a:'Owner since May 2025',b:'12 Members',av:0}];
 const M0=[{n:'BILLY BOB',a:'Member since October 2025',b:'12 Members',av:0},{n:'JEFF BOB',a:'Member since August 2025',b:'10 Members',av:0},{n:'GRACE G',a:'Member since July 2025',b:'10 Members',av:1},{n:'ATOMIK G',a:'Member since July 2025',b:'10 Members',av:1},{n:'TONY BOB',a:'Member since May 2025',b:'12 Members',av:0}];
 
-const st={screen:'profile',hist:[],rides:SEED_RIDES,pinned:SEED_PINS,active:SEED_PINS[1],mode:'trackmode',speed:0,target:0,top:0,dur:0,started:false,moving:false,paused:false,lowT:0,
+const st={ready:false,user:null,screen:'login',hist:[],rides:SEED_RIDES,pinned:SEED_PINS,active:SEED_PINS[1],mode:'trackmode',speed:0,target:0,top:0,dur:0,started:false,moving:false,paused:false,lowT:0,
  sel:null,groups:G0,gSel:0,members:M0,mSel:null,pick:{},stats:{'date created':1,distance:1,'top speed':1,participant:1,'team tag':1},comment:'',prev:null,
  lssColor:null,entry:'',draft:[],lssName:'',lssEdit:null,cgName:'',cgMood:'',cgEmail:'',cgShow:'tony@tandemgps.com',cgAdded:0,inbox:0,
  lng:null,lat:null,tlng:null,tlat:null,brg:0,trail:[],prevFix:null,fixes:[],lastFix:0};
@@ -36,11 +43,13 @@ export default function App(){
  const [,setRev]=useState(0);const rerender=useRef(()=>setRev(v=>v+1)).current;
  const winD=useWindowDimensions();const [box,setBox]=useState(null);const win=box||winD;const [mapStyle,setMapStyle]=useState(null);
  const app=useRef(null);
- const nav=(s,noHist)=>{if(LOCK[s]&&st.moving)return;if(!noHist&&st.screen!==s)st.hist.push(st.screen);st.screen=s;rerender()};
+ const nav=(s,noHist)=>{if(LOCK[s]&&st.moving)return;if(!noHist&&st.screen!==s)st.hist.push(st.screen);st.screen=s;if(s==='trackmode'||s==='maplink')AsyncStorage.setItem('mode',s).catch(()=>{});rerender()};
  const back=()=>{const s=st.hist.pop();if(s&&!(LOCK[s]&&st.moving)){st.screen=s;rerender()}};
  app.current={nav,back,rerender};
 
- useEffect(()=>{AsyncStorage.multiGet(['rides','pinned','active']).then(v=>{const o=Object.fromEntries(v);if(o.rides)st.rides=JSON.parse(o.rides);if(o.pinned)st.pinned=JSON.parse(o.pinned);if(o.active)st.active=JSON.parse(o.active);rerender()}).catch(()=>{});
+ useEffect(()=>{AsyncStorage.multiGet(['rides','pinned','active','mode']).then(async v=>{const o=Object.fromEntries(v);if(o.rides)st.rides=JSON.parse(o.rides);if(o.pinned)st.pinned=JSON.parse(o.pinned);if(o.active)st.active=JSON.parse(o.active);if(o.mode)st.mode=o.mode;
+   // Guide: opening the app while still logged in goes straight to the last ride mode and map. Otherwise, Login.
+   st.user=await current();st.screen=st.user?st.mode:'login';st.ready=true;rerender()}).catch(()=>{st.ready=true;rerender()});
   const sub=BackHandler.addEventListener('hardwareBackPress',()=>{if(st.hist.length){back();return true}return false});return()=>sub.remove()},[]);
 
  useEffect(()=>{let watch=null,dead=false;
@@ -62,6 +71,7 @@ export default function App(){
 
  useEffect(()=>{let live=true;const tryStyle=async i=>{const urls=['https://tiles.openfreemap.org/styles/dark','https://tiles.openfreemap.org/styles/liberty'];try{const r=await fetch(urls[i]);if(!r.ok)throw 0;const j=await r.json();if(live)setMapStyle(styleForApp(j))}catch(e){if(i<urls.length-1)tryStyle(i+1);else if(live)setTimeout(()=>tryStyle(0),15000)}};tryStyle(0);return()=>{live=false}},[]);
 
+ if(!st.ready)return <View style={{flex:1,backgroundColor:'#000'}}/>;
  const sName=plateOf(),m=MAN[sName],k=Math.min(win.width/m.w,win.height/m.h) /* one scale for both axes, so the client's art is never stretched */,ox=(win.width-m.w*k)/2,oy=(win.height-m.h*k)/2;
  const c={k,sName,nav,back,rerender};
  let plate=ART['plate_'+sName];if(sName==='create_lss'&&st.draft.length)plate=ART.plate_create_lss_empty;if(sName==='create_group')plate=ART.plate_create_group_empty;
@@ -98,7 +108,7 @@ const Pic=({k,src,x,y,w,h,r,o})=><View pointerEvents="none" style={b(k,x,y,w,h)}
 function Spr({k,sp,c,x,y,clip,o}){if(!sp)return null;const X=x==null?sp.x:x,Y=y==null?sp.y:y;
  if(clip)return <View pointerEvents="none" style={[b(k,X,Y,sp.w,clip),{overflow:'hidden'}]}><Image source={sp.img} fadeDuration={0} style={{width:sp.w*k,height:sp.h*k,tintColor:c||sp.c,opacity:o==null?1:o}}/></View>;
  return <View pointerEvents="none" style={b(k,X,Y,sp.w,sp.h)}><Image source={sp.img} fadeDuration={0} style={{width:sp.w*k,height:sp.h*k,tintColor:c||sp.c,opacity:o==null?1:o}}/></View>}
-const Cp=({k,x,y,w,t,size,c,align})=><Text pointerEvents="none" numberOfLines={1} style={{position:'absolute',left:x*k,top:y*k,width:w?w*k:undefined,fontSize:size*k,color:c,fontFamily:'serif',fontVariant:['small-caps'],textAlign:align||'left'}}>{t}</Text>;
+const Cp=({k,x,y,w,t,size,c,align})=><Text pointerEvents="none" numberOfLines={1} style={{position:'absolute',left:x*k,top:y*k,width:w?w*k:undefined,fontSize:size*k,color:c,fontFamily:FONT,includeFontPadding:false,textAlign:align||'left'}}>{t}</Text>;
 function Digits({k,t,cx,y,h,c}){const sc=h/27.3,ds=String(t).split('').map(d=>DIG[d]).filter(Boolean);let w=0;ds.forEach(d=>{w+=d.w*sc*.72});let x=cx-w/2;return ds.map((d,i)=>{const X=x-d.w*sc*.14;x+=d.w*sc*.72;return <View key={i} pointerEvents="none" style={b(k,X,y,d.w*sc,d.h*sc)}><Image source={d.img} fadeDuration={0} style={{width:d.w*sc*k,height:d.h*sc*k,tintColor:c}}/></View>})}
 const Bar=({k,x,y,w,h,bands})=>bands.map((bd,i)=><Cov key={i} k={k} x={x+i*w/bands.length} y={y} w={w/bands.length+.5} h={h} c={bd.c}/>);
 const toggleNote=(on)=>toast(on);
@@ -132,10 +142,57 @@ function Row({k,g,s,x,y,on,avx,press}){const ox=x-avx+2,col=on?'#F27200':'#88FA4
   {a?<Spr k={k} sp={a} c="#88FA4E" x={ox} y={38} clip={14}/>:<Cp k={k} x={ox} y={36} t={g.a} size={12} c="#88FA4E"/>}
   {bb?<Spr k={k} sp={bb} c="#88FA4E" x={ox} y={52} clip={14}/>:<Cp k={k} x={ox} y={50} t={g.b} size={12} c="#88FA4E"/>}</Pressable>}
 function Rows({c,list,s,x,y,sel,set,avx}){const {k}=c;return <View style={b(k,0,222,392,345)}><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{height:Math.max(345,(list.length*68.85+8))*k}}>{list.map((g,i)=><Row key={g.n+i} k={k} g={g} s={s} x={x} y={y-222+i*68.85} avx={avx} on={sel===i} press={()=>{set(sel===i?null:i);c.rerender()}}/>)}</ScrollView></View>}
-const Field=({k,x,y,w,h,value,onChange,color='#F27200',max,multi,size=18,label})=><TextInput accessibilityLabel={label} value={value} onChangeText={onChange} maxLength={max} multiline={multi} autoCapitalize="none" style={[b(k,x,y,w,h),{color,fontSize:size*k,padding:0,textAlign:'center',fontFamily:'serif',fontVariant:['small-caps']}]}/>;
+const Field=({k,x,y,w,h,value,onChange,color='#F27200',max,multi,size=18,label})=><TextInput accessibilityLabel={label} value={value} onChangeText={onChange} maxLength={max} multiline={multi} autoCapitalize="none" style={[b(k,x,y,w,h),{color,fontSize:size*k,padding:0,textAlign:'center',fontFamily:FONT,includeFontPadding:false}]}/>;
 
+/* Text set in Copperplate CC at the client's cap height. Spread to the mockup's width where the mockup
+   used wide tracking; never squeezed. Metrics come from the device, so no font numbers are guessed. */
+function FT({k,t,x0,x1,y,cap,c,align='center',bold,spread=true}){const fam=bold?FONT_B:FONT,[m,setM]=useState(null);
+ if(!m)return <Text onTextLayout={e=>{const l=e.nativeEvent.lines[0];if(l&&l.width)setM({w:l.width,cap:l.capHeight||l.ascender*.72,asc:l.ascender})}} style={{position:'absolute',left:0,top:-2000,fontSize:100,fontFamily:fam,includeFontPadding:false,opacity:0}}>{t}</Text>;
+ const fs=100*cap/m.cap,nat=m.w*fs/100,n=t.length;let ls=0,left;
+ if(spread&&x1!=null&&n>1&&x1-x0>nat)ls=(x1-x0-nat)/(n-1);
+ const wid=nat+ls*(n-1);left=align==='left'?x0:x1!=null?(x0+x1-wid)/2:x0;
+ return <Text pointerEvents="none" numberOfLines={1} style={{position:'absolute',left:(left-ls/2)*k,top:(y-(m.asc-m.cap)*fs/100)*k,fontSize:fs*k,letterSpacing:ls*k,fontFamily:fam,includeFontPadding:false,color:c}}>{t}</Text>}
+const AG='#10F74C',AO='#FF7700';
+function AuthField({k,x,y,w,h,label,ph,phx,value,set,secure,eye,keyboard}){const [show,setShow]=useState(false);
+ return <><TextInput accessibilityLabel={label} value={value} onChangeText={set} secureTextEntry={!!secure&&!show} keyboardType={keyboard||'default'} autoCapitalize="none" autoCorrect={false}
+   style={[b(k,x+14,y+2,w-(eye?62:28),h-4),{color:AO,fontSize:12.5*k,padding:0,textAlign:'center',fontFamily:FONT,includeFontPadding:false}]}/>
+  {!value&&<FT k={k} t={ph} x0={phx[0]} x1={phx[1]} y={y+h/2-4.5} cap={9} c={AO} spread={false}/>}
+  {eye&&<Hot k={k} x={x+w-46} y={y} w={44} h={h} on={()=>setShow(v=>!v)} label={label+' show or hide'}/>}</>}
+const form={user:'',email:'',country:'',city:'',pw:'',pw2:'',terms:false,lemail:'',lpw:'',busy:false};
 const SCREENS={
- profile:({c})=>{const {k,nav,back}=c;return <><Hot k={k} x={118} y={10} w={160} h={144} on={web} label="Website"/><Hot k={k} x={49} y={40} w={50} h={50} on={()=>missing('Login')} label="Logout"/><Hot k={k} x={305} y={48} w={55} h={54} on={pause(c)} label="Pause"/><Hot k={k} x={309} y={162} w={54} h={52} on={()=>missing('Messages')} label="Messages"/>
+ login:({c})=>{const {k,nav,rerender}=c,set=key=>v=>{form[key]=v;rerender()};
+  const go=async()=>{if(form.busy)return;if(!form.lemail.trim()||!form.lpw){toast('Enter your email and password');return}form.busy=true;const r=await login(form.lemail,form.lpw);form.busy=false;
+   if(r.error){toast(r.error);return}st.user=r.account;form.lpw='';st.hist=[];st.screen='profile';rerender()};
+  return <><FT k={k} t="TANDEM" x0={129} x1={284} y={165} cap={22} c={AG}/>
+  <FT k={k} t="WELCOME TO THE" x0={119} x1={294} y={254} cap={14} c={AG} spread={false}/><FT k={k} t="TANDEM COMMUNITY!" x0={98} x1={314} y={279} cap={14} c={AG} spread={false}/>
+  <AuthField k={k} x={50} y={359} w={316} h={41} label="Email" ph="ENTER EMAIL" phx={[163,250]} value={form.lemail} set={set('lemail')} keyboard="email-address"/>
+  <AuthField k={k} x={50} y={429} w={316} h={41} label="Password" ph="ENTER PASSWORD" phx={[145,266]} value={form.lpw} set={set('lpw')} secure eye/>
+  <FT k={k} t="FORGET PASSWORD?" x0={138} x1={276} y={492} cap={9} c={AO} spread={false}/><Hot k={k} x={120} y={484} w={176} h={28} on={()=>missing('Reset Password')} label="Forget password"/>
+  <FT k={k} t="LET'S GO" x0={182} x1={289} y={646} cap={14} c={AG}/><Hot k={k} x={102} y={627} w={210} h={55} on={go} label="Log in"/>
+  <FT k={k} t="REGISTER" x0={163} x1={254} y={714} cap={10} c={AO}/><Hot k={k} x={140} y={704} w={136} h={32} on={()=>nav('join')} label="Register"/></>},
+ join:({c})=>{const {k,nav,back,rerender}=c,[pick,setPick]=useState(false),set=key=>v=>{form[key]=v;rerender()};
+  const go=async()=>{if(form.busy)return;const e=checkJoin(form);if(e){toast(e);return}form.busy=true;const r=await register(form);form.busy=false;if(r.error){toast(r.error);return}
+   st.user=r.account;Object.assign(form,{user:'',email:'',country:'',city:'',pw:'',pw2:'',terms:false});toast('Choose Your Mood screen is not in the guide yet');st.hist=[];st.screen='profile';rerender()};
+  return <><FT k={k} t="TANDEM" x0={129} x1={284} y={197} cap={22} c={AG}/>
+  <AuthField k={k} x={49} y={255} w={318} h={41} label="User name" ph="USER NAME" phx={[167,244]} value={form.user} set={set('user')}/>
+  <AuthField k={k} x={49} y={310} w={318} h={41} label="Email" ph="EMAIL" phx={[186,225]} value={form.email} set={set('email')} keyboard="email-address"/>
+  {form.country?<FT k={k} t={form.country.toUpperCase()} x0={60} x1={356} y={384} cap={9} c={AO} spread={false}/>:<FT k={k} t="SELECT COUNTRY" x0={146} x1={263} y={384} cap={9} c={AO} spread={false}/>}
+  <Hot k={k} x={49} y={368} w={318} h={41} on={()=>setPick(true)} label="Country"/>
+  <AuthField k={k} x={49} y={424} w={318} h={41} label="City" ph="CITY" phx={[191,219]} value={form.city} set={set('city')}/>
+  <AuthField k={k} x={49} y={479} w={318} h={41} label="Password" ph="ENTER PASSWORD" phx={[144,265]} value={form.pw} set={set('pw')} secure eye/>
+  <AuthField k={k} x={49} y={539} w={318} h={41} label="Confirm password" ph="CONFIRM PASSWORD" phx={[134,276]} value={form.pw2} set={set('pw2')} secure eye/>
+  <Hot k={k} x={74} y={597} w={45} h={45} on={()=>{form.terms=!form.terms;rerender()}} label="Agree to terms"/>
+  {form.terms&&<Text pointerEvents="none" style={{position:'absolute',left:81*k,top:600*k,width:30*k,textAlign:'center',fontSize:24*k,lineHeight:30*k,color:AG}}>✓</Text>}
+  <FT k={k} t="BY SIGNING UP, YOU ARE AGREEING TO OUR" x0={118} y={605} cap={7.5} c={AO} align="left" spread={false}/>
+  <FT k={k} t="TERMS OF SERVICE & PRIVACY POLICY" x0={118} y={625} cap={7.5} c={AO} align="left" spread={false}/>
+  <Hot k={k} x={118} y={620} w={240} h={22} on={()=>missing('Terms of Service and Privacy Policy')} label="Terms"/>
+  <FT k={k} t="JOIN!" x0={202} x1={264} y={711} cap={14} c={AG}/><Hot k={k} x={101} y={692} w={210} h={55} on={go} label="Join"/>
+  <FT k={k} t="LOGIN" x0={180} x1={234} y={778} cap={10} c={AO}/><Hot k={k} x={150} y={768} w={114} h={32} on={()=>{if(st.hist.length)back();else nav('login',true)}} label="Login"/>
+  {pick&&<View style={[b(k,40,150,334,640),{backgroundColor:'#000',borderWidth:1.2*k,borderColor:AG,borderRadius:24*k,overflow:'hidden'}]}>
+   <ScrollView contentContainerStyle={{paddingVertical:8*k}}>{COUNTRIES.map(n=><Pressable key={n} accessibilityLabel={n} onPress={()=>{form.country=n;setPick(false)}} style={{paddingVertical:9*k,alignItems:'center'}}>
+    <Text style={{color:form.country===n?AG:AO,fontSize:12.5*k,fontFamily:FONT,includeFontPadding:false}}>{n.toUpperCase()}</Text></Pressable>)}</ScrollView></View>}</>},
+
+ profile:({c})=>{const {k,nav,back}=c;return <><Hot k={k} x={118} y={10} w={160} h={144} on={web} label="Website"/><Hot k={k} x={49} y={40} w={50} h={50} on={()=>{logout();st.user=null;st.hist=[];st.screen='login';rerender()}} label="Logout"/><Hot k={k} x={305} y={48} w={55} h={54} on={pause(c)} label="Pause"/><Hot k={k} x={309} y={162} w={54} h={52} on={()=>missing('Messages')} label="Messages"/>
   <Hot k={k} x={178} y={290} w={120} h={90} on={()=>missing('Messages')} label="Profile picture"/><Hot k={k} x={131} y={323} w={47} h={47} on={back} label="Go back"/><Hot k={k} x={120} y={380} w={160} h={40} on={()=>missing('Edit Profile')} label="Edit profile"/>
   <Hot k={k} x={150} y={470} w={100} h={60} on={()=>nav('manage_rides')} label="Rides"/><Hot k={k} x={140} y={560} w={120} h={60} on={()=>nav('manage_groups')} label="Groups"/><Hot k={k} x={135} y={665} w={130} h={85} on={()=>nav(st.mode)} label="Lets go"/>
   {['Terms and Conditions','Delete Account','About','Privacy Policy','Password and Security'].map((n,i)=><Hot key={n} k={k} x={20+i*72} y={755} w={68} h={30} on={()=>missing(n)} label={n}/>)}</>},

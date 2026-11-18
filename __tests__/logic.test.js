@@ -9,3 +9,8 @@ test('GPS jitter on a parked bike stays at zero',()=>{const a={t:0,p:[0,40],acc:
 test('old fixes drop out of the speed window',()=>{let l=[];l=addFix(l,{t:0});l=addFix(l,{t:3000});l=addFix(l,{t:6000});expect(l.map(f=>f.t)).toEqual([3000,6000])});
 test('a GPS jump never becomes a speed',()=>{let l=[];l=addFix(l,{t:0,p:[-122,37],acc:5});l=addFix(l,{t:1000,p:[-98.49,29.42],acc:5});expect(l.length).toBe(1);expect(fixSpeed(0,l)).toBe(0);expect(fixSpeed(5000,l)).toBe(0);l=addFix(l,{t:2000,p:[-98.49,29.42027],acc:5});expect(fixSpeed(0,l)).toBeCloseTo(30,0)});
 test('two fixes arriving together are not a jump',()=>{let l=[{t:1000,p:[0,40],acc:5}];l=addFix(l,{t:1050,p:[0,40.0003],acc:5});expect(l.length).toBe(1);l=addFix(l,{t:2000,p:[0,40.0003],acc:5});expect(l.length).toBe(2);expect(fixSpeed(0,l)).toBeCloseTo(33,0)});
+import {checkJoin,scramble,EMAIL_RE} from '../src/auth';
+test('join form rules',()=>{const ok={user:'Razer',email:'razer@tandemgps.com',country:'United States',city:'Greeley',pw:'ride2026',pw2:'ride2026',terms:true};
+ expect(checkJoin(ok)).toBe(null);expect(checkJoin({...ok,email:'razer@'})).toMatch(/email/);expect(checkJoin({...ok,pw2:'x'})).toMatch(/match/);
+ expect(checkJoin({...ok,terms:false})).toMatch(/Terms/);expect(checkJoin({...ok,pw:'abc',pw2:'abc'})).toMatch(/6/);expect(checkJoin({...ok,country:''})).toMatch(/country/)});
+test('stored password is not plain text and is stable',()=>{expect(scramble('ride2026')).not.toContain('ride');expect(scramble('ride2026')).toBe(scramble('ride2026'));expect(scramble('a')).not.toBe(scramble('b'));expect(EMAIL_RE.test('a@b.co')).toBe(true)});

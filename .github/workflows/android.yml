@@ -16,6 +16,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - run: npm ci
       - run: npm test -- --ci
+      - name: Add Copperplate CC font
+        run: bash scripts/fetch-font.sh
       - name: Build release APK
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon --stacktrace
