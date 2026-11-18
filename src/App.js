@@ -108,7 +108,7 @@ const Pic=({k,src,x,y,w,h,r,o})=><View pointerEvents="none" style={b(k,x,y,w,h)}
 function Spr({k,sp,c,x,y,clip,o}){if(!sp)return null;const X=x==null?sp.x:x,Y=y==null?sp.y:y;
  if(clip)return <View pointerEvents="none" style={[b(k,X,Y,sp.w,clip),{overflow:'hidden'}]}><Image source={sp.img} fadeDuration={0} style={{width:sp.w*k,height:sp.h*k,tintColor:c||sp.c,opacity:o==null?1:o}}/></View>;
  return <View pointerEvents="none" style={b(k,X,Y,sp.w,sp.h)}><Image source={sp.img} fadeDuration={0} style={{width:sp.w*k,height:sp.h*k,tintColor:c||sp.c,opacity:o==null?1:o}}/></View>}
-const Cp=({k,x,y,w,t,size,c,align})=><Text pointerEvents="none" numberOfLines={1} style={{position:'absolute',left:x*k,top:y*k,width:w?w*k:undefined,fontSize:size*k,color:c,fontFamily:FONT,includeFontPadding:false,textAlign:align||'left'}}>{t}</Text>;
+const Cp=({k,x,y,w,t,size,c,align})=><View pointerEvents="none" style={{position:'absolute',left:0,top:0}}><Text numberOfLines={1} style={{position:'absolute',left:x*k,top:y*k,width:w?w*k:undefined,fontSize:size*k,color:c,fontFamily:FONT,includeFontPadding:false,textAlign:align||'left'}}>{t}</Text></View>;
 function Digits({k,t,cx,y,h,c}){const sc=h/27.3,ds=String(t).split('').map(d=>DIG[d]).filter(Boolean);let w=0;ds.forEach(d=>{w+=d.w*sc*.72});let x=cx-w/2;return ds.map((d,i)=>{const X=x-d.w*sc*.14;x+=d.w*sc*.72;return <View key={i} pointerEvents="none" style={b(k,X,y,d.w*sc,d.h*sc)}><Image source={d.img} fadeDuration={0} style={{width:d.w*sc*k,height:d.h*sc*k,tintColor:c}}/></View>})}
 const Bar=({k,x,y,w,h,bands})=>bands.map((bd,i)=><Cov key={i} k={k} x={x+i*w/bands.length} y={y} w={w/bands.length+.5} h={h} c={bd.c}/>);
 const toggleNote=(on)=>toast(on);
@@ -151,12 +151,11 @@ function FT({k,t,x0,x1,y,cap,c,align='center',bold,spread=true}){const fam=bold?
  const fs=100*cap/m.cap,nat=m.w*fs/100,n=t.length;let ls=0,left;
  if(spread&&x1!=null&&n>1&&x1-x0>nat)ls=(x1-x0-nat)/(n-1);
  const wid=nat+ls*(n-1);left=align==='left'?x0:x1!=null?(x0+x1-wid)/2:x0;
- return <Text pointerEvents="none" numberOfLines={1} style={{position:'absolute',left:(left-ls/2)*k,top:(y-(m.asc-m.cap)*fs/100)*k,fontSize:fs*k,letterSpacing:ls*k,fontFamily:fam,includeFontPadding:false,color:c}}>{t}</Text>}
+ return <View pointerEvents="none" style={{position:'absolute',left:0,top:0}}><Text numberOfLines={1} style={{position:'absolute',left:(left-ls/2)*k,top:(y-(m.asc-m.cap)*fs/100)*k,fontSize:fs*k,letterSpacing:ls*k,fontFamily:fam,includeFontPadding:false,color:c}}>{t}</Text></View>}
 const AG='#10F74C',AO='#FF7700';
 function AuthField({k,x,y,w,h,label,ph,phx,value,set,secure,eye,keyboard}){const [show,setShow]=useState(false);
- return <><TextInput accessibilityLabel={label} value={value} onChangeText={set} secureTextEntry={!!secure&&!show} keyboardType={keyboard||'default'} autoCapitalize="none" autoCorrect={false}
+ return <>{!value&&<FT k={k} t={ph} x0={phx[0]} x1={phx[1]} y={y+h/2-4.5} cap={9} c={AO} spread={false}/>}<TextInput accessibilityLabel={label} value={value} onChangeText={set} secureTextEntry={!!secure&&!show} keyboardType={keyboard||'default'} autoCapitalize="none" autoCorrect={false}
    style={[b(k,x+14,y+2,w-(eye?62:28),h-4),{color:AO,fontSize:12.5*k,padding:0,textAlign:'center',fontFamily:FONT,includeFontPadding:false}]}/>
-  {!value&&<FT k={k} t={ph} x0={phx[0]} x1={phx[1]} y={y+h/2-4.5} cap={9} c={AO} spread={false}/>}
   {eye&&<Hot k={k} x={x+w-46} y={y} w={44} h={h} on={()=>setShow(v=>!v)} label={label+' show or hide'}/>}</>}
 const form={user:'',email:'',country:'',city:'',pw:'',pw2:'',terms:false,lemail:'',lpw:'',busy:false};
 const SCREENS={
@@ -182,7 +181,7 @@ const SCREENS={
   <AuthField k={k} x={49} y={479} w={318} h={41} label="Password" ph="ENTER PASSWORD" phx={[144,265]} value={form.pw} set={set('pw')} secure eye/>
   <AuthField k={k} x={49} y={539} w={318} h={41} label="Confirm password" ph="CONFIRM PASSWORD" phx={[134,276]} value={form.pw2} set={set('pw2')} secure eye/>
   <Hot k={k} x={74} y={597} w={45} h={45} on={()=>{form.terms=!form.terms;rerender()}} label="Agree to terms"/>
-  {form.terms&&<Text pointerEvents="none" style={{position:'absolute',left:81*k,top:600*k,width:30*k,textAlign:'center',fontSize:24*k,lineHeight:30*k,color:AG}}>✓</Text>}
+  {form.terms&&<View pointerEvents="none" style={b(k,81,600,30,30)}><Text style={{width:30*k,textAlign:'center',fontSize:24*k,lineHeight:30*k,color:AG}}>✓</Text></View>}
   <FT k={k} t="BY SIGNING UP, YOU ARE AGREEING TO OUR" x0={118} y={605} cap={7.5} c={AO} align="left" spread={false}/>
   <FT k={k} t="TERMS OF SERVICE & PRIVACY POLICY" x0={118} y={625} cap={7.5} c={AO} align="left" spread={false}/>
   <Hot k={k} x={118} y={620} w={240} h={22} on={()=>missing('Terms of Service and Privacy Policy')} label="Terms"/>

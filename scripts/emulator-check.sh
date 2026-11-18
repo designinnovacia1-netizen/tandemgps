@@ -39,12 +39,12 @@ press Email 208 331; typein razer@tandemgps.com; hidekb
 press Country 208 389; sleep 1; shot 00c_country_list
 # The country list scrolls; swipe until United States is on screen.
 for i in $(seq 1 25); do
-  c=$(timeout 15 adb shell "uiautomator dump /sdcard/u.xml >/dev/null 2>&1; cat /sdcard/u.xml" 2>/dev/null | tr -d '\r' | python3 scripts/find_label.py "United States")
+  c=$(timeout 15 adb shell "uiautomator dump /sdcard/u.xml >/dev/null 2>&1; cat /sdcard/u.xml" 2>/dev/null | tr -d '\r' | python3 scripts/find_label.py "Canada")
   [ -n "$c" ] && break
   adb shell input swipe $((W/2)) $((H*70/100)) $((W/2)) $((H*30/100)) 300; sleep 1
 done
 echo "country found after $i tries" >> shots/walk.txt
-press "United States" 208 500
+press "Canada" 208 500
 press City 208 445; typein Greeley; hidekb
 press Password 208 500; typein ride2026; hidekb
 press "Confirm password" 208 560; typein ride2026; hidekb
