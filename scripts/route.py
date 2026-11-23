@@ -55,10 +55,13 @@ def main():
         d = 0.0
         for s in steps:
             road = f"{s.get('name', '')} {s.get('ref', '')}".strip()
-            if d < 25000:
-                log(f'{d:7.0f} m  {road or "(ramp or unnamed)"}')
-            if hwy is None and 'Business' not in road and ('I 90' in road or 'I-90' in road):
+            classes = sorted({c for x in s.get('intersections', []) for c in x.get('classes', [])})
+            if d < 12000:
+                log(f'{d:7.0f} m  {s.get("distance", 0):6.0f} m  {road or "(unnamed)"}  {",".join(classes)}')
+            if hwy is None and ('motorway' in classes or ('Business' not in road and ('I 90' in road or 'I-90' in road))):
                 hwy = d
+            if hwy is None and s.get('distance', 0) > 8000:
+                hwy = d  # the first long step out of town is the interstate
             d += s.get('distance', 0)
         log(f'route {cum[-1]:.0f} m, I-90 starts at {hwy} m')
         if hwy is not None and hwy > LEAD:
@@ -72,7 +75,7 @@ def main():
         cum = [0.0, hav(pts[0], pts[1])]
 
     if mode == 'walk':
-        sp = [67] * 12 + [115] * 8
+        sp = [75] * 12 + [115] * 8
     else:
         # Town: up to 30 mph and hold it until about 250 m before I-90 (the ramp).
         sp = ramp(0, 30, 6)

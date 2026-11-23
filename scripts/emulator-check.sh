@@ -137,8 +137,6 @@ adb shell pidof com.tandemgps > shots/alive.txt || echo DEAD > shots/alive.txt
 test -s shots/alive.txt && ! grep -q DEAD shots/alive.txt && [ "$LAUNCH_FAILS" -eq 0 ] && [ "$CRASHES" -eq 0 ]
 # Contact sheets of the demo video, printed into the log so the run can be reviewed without downloading.
 if command -v ffmpeg >/dev/null; then
-  for part in 1 2; do
-    ffmpeg -v error -y -i shots/speedometer_demo.mp4 -vf "fps=1/4,scale=300:-1,tile=6x4" -frames:v 2 -q:v 6 shots/sheet%d.jpg
-  done
-  for f in shots/sheet*.jpg; do echo "SHEET_BEGIN $f"; base64 -w 0 "$f"; echo; echo "SHEET_END"; done
+  ffmpeg -v error -y -i shots/speedometer_demo.mp4 -vf "fps=1/3,scale=240:-1,tile=8x4" -frames:v 3 -q:v 5 shots/sheet%d.jpg
+  for f in shots/sheet*.jpg; do echo "SHEET_BEGIN $f"; base64 "$f"; echo "SHEET_END"; done
 fi
