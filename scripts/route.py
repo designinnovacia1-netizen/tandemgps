@@ -52,7 +52,7 @@ def main():
         for s in steps:
             road = f"{s.get('name', '')} {s.get('ref', '')}"
             log(f'{d:7.0f} m  {road.strip() or "(unnamed)"}')
-            if hwy is None and ('I 90' in road or 'I-90' in road or 'Interstate 90' in road):
+            if hwy is None and 'Business' not in road and ('I 90' in road or 'I-90' in road):
                 hwy = d
             d += s.get('distance', 0)
         log(f'route {cum[-1]:.0f} m, I-90 starts at {hwy} m')

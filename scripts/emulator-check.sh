@@ -65,10 +65,6 @@ press "Confirm password" 208 560; typein ride2026; hidekb
 press "Agree to terms" 96 620; shot 00d_join_filled
 press Join 206 720 4
 shot 00e_after_join
-press Logout 74 65 3; shot 00f_logged_out
-press Email 208 380; typein razer@tandemgps.com; hidekb
-press Password 208 450; typein ride2026; hidekb
-press "Log in" 207 655 4
 U=P
 shot 01_profile
 press Rides 200 500; shot 02_manage_rides
@@ -123,6 +119,17 @@ python3 - <<'PY' >> shots/walk.txt
 d=open('shots/speedometer_demo.mp4','rb').read()
 print('video has moov index:', b'moov' in d, 'bytes:', len(d))
 PY
+# Logout and log back in last, so a problem here cannot spoil the walk or the video.
+adb shell am force-stop com.tandemgps; sleep 1
+adb shell monkey -p com.tandemgps -c android.intent.category.LAUNCHER 1 >/dev/null; sleep 8
+press Profile 200 70 3
+press Logout 74 65 3; shot 20_logged_out
+press Email 208 380; typein razer@tandemgps.com; hidekb
+press Password 208 450; typein ride2026; hidekb
+press "Log in" 207 655 4
+U=P
+shot 21_logged_back_in
+for f in shots/dump_*.xml; do [ -f "$f" ] && { echo "$f: $(head -c 600 "$f")" >> shots/walk.txt; }; done
 adb logcat -d -b crash > shots/crash.txt
 adb logcat -d | grep -E "ReactNativeJS|AndroidRuntime" | grep -v "Mbgl-HttpRequest\|permanent error" | tail -400 > shots/js.txt
 adb logcat -d | grep "ReactNativeJS" | grep "TG " | grep -v "TG fix" | sed 's/.*ReactNativeJS: //' | awk '!seen[$0]++' > shots/tg.txt
