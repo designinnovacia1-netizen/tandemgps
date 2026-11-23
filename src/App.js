@@ -57,7 +57,7 @@ export default function App(){
    if(!ok){toast('TandemGPS needs location for the speedometer');return}if(dead)return;
    Geolocation.setRNConfiguration({skipPermissionRequests:true,locationProvider:'android'});
    watch=Geolocation.watchPosition(p=>{const c=p.coords,pv=st.prevFix,here=[c.longitude,c.latitude];const now=Date.now();st.fixes=addFix(st.fixes,{t:now,p:here,acc:c.accuracy});const v=fixSpeed(c.speed,st.fixes);st.lastFix=now;console.log('TG fix',JSON.stringify({reported:c.speed,acc:c.accuracy,ts:p.timestamp,n:st.fixes.length,mps:v}));
-     if(pv&&distance([pv.lon,pv.lat],here)>3){st.tb=c.heading!=null&&c.heading>=0&&(v||0)>1?c.heading:bearing([pv.lon,pv.lat],here);st.trail=st.trail.concat([here]).slice(-1500)}
+     if(pv&&distance([pv.lon,pv.lat],here)>3){st.tb=bearing([pv.lon,pv.lat],here);st.trail=st.trail.concat([here]).slice(-1500)}
      if(st.lng==null){st.lng=c.longitude;st.lat=c.latitude;st.trail=[here];rerender()}
      st.tlng=c.longitude;st.tlat=c.latitude;st.prevFix={lat:c.latitude,lon:c.longitude,t:p.timestamp};st.target=Math.max(0,(v||0)*MPH_PER_MS)},
     ()=>{},{enableHighAccuracy:true,distanceFilter:0,interval:1000,fastestInterval:500,maximumAge:1000})})();
@@ -96,6 +96,7 @@ function LiveMap({style,rect,k,showRoute}){const cam=useRef(null);const [shape,s
    <MapLibreGL.Camera ref={cam} defaultSettings={{centerCoordinate:[st.lng||-98.49,st.lat||29.42],zoomLevel:16.3,pitch:58}}/>
    {shape&&showRoute&&<MapLibreGL.ShapeSource id="route" shape={shape}><MapLibreGL.LineLayer id="r0" style={{lineColor:'#88FA4E',lineWidth:2,lineOffset:-3,lineJoin:'round',lineCap:'round'}}/><MapLibreGL.LineLayer id="r1" style={{lineColor:'#88FA4E',lineWidth:2,lineOffset:3,lineJoin:'round',lineCap:'round'}}/></MapLibreGL.ShapeSource>}
   </MapLibreGL.MapView>
+  {rect&&<View style={{position:'absolute',left:box.width/2-8*k,top:rect[3]*k*.35+(rect[3]*k*.65)/2-11*k,width:0,height:0,borderLeftWidth:8*k,borderRightWidth:8*k,borderBottomWidth:20*k,borderLeftColor:'transparent',borderRightColor:'transparent',borderBottomColor:'#88FA4E'}}/>}
   <Text style={{position:'absolute',top:1,right:3,fontSize:7*k,color:'#aaa'}} onPress={()=>Linking.openURL('https://www.openstreetmap.org/copyright')}>OpenFreeMap © OpenMapTiles Data from OpenStreetMap</Text>
  </View>}
 
@@ -196,7 +197,7 @@ const SCREENS={
   <Hot k={k} x={150} y={470} w={100} h={60} on={()=>nav('manage_rides')} label="Rides"/><Hot k={k} x={140} y={560} w={120} h={60} on={()=>nav('manage_groups')} label="Groups"/><Hot k={k} x={135} y={665} w={130} h={85} on={()=>nav(st.mode)} label="Lets go"/>
   {['Terms and Conditions','Delete Account','About','Privacy Policy','Password and Security'].map((n,i)=><Hot key={n} k={k} x={20+i*72} y={755} w={68} h={30} on={()=>missing(n)} label={n}/>)}</>},
  trackmode:({c})=>{const {k,nav,back}=c;st.mode='trackmode';return <><Speedo c={c} s="trackmode"/>
-  {st.active.id!=='sport'&&<><Cov k={k} x={102} y={128} w={186} h={28}/><Cp k={k} x={0} y={126} w={397} t={st.active.name} size={26} c="#88FA4E" align="center"/></>}
+  {st.active.id!=='sport'&&<><Cov k={k} x={102} y={128} w={186} h={28}/>{(()=>{const fs=Math.min(26,178/(Math.max(1,st.active.name.length)*.85));return <Cp k={k} x={109} y={126+(26-fs)*.5} w={179} t={st.active.name} size={fs} c="#88FA4E" align="center"/>})()}</>}
   <Pins c={c} s="trackmode"/><Hide k={k} rects={[[25,20,78,78],[292,24,72,72],[160,609,76,47],[186,655,38,12]]}/>
   {!st.moving&&<><Hot k={k} x={30} y={25} w={70} h={68} on={back} label="Go back"/><Hot k={k} x={295} y={28} w={65} h={63} on={startShare(c)} label="Share"/><Hot k={k} x={165} y={596} w={66} h={62} on={()=>nav('streetmode')} label="Search map"/><Hot k={k} x={15} y={708} w={50} h={50} on={()=>nav('create_lss')} label="Create LSS"/></>}
   <Hot k={k} x={131} y={16} w={133} h={120} on={()=>nav('profile')} label="Profile"/><Hot k={k} x={30} y={118} w={66} h={66} on={()=>nav('streetmode')} label="StreetMode"/><Hot k={k} x={293} y={118} w={65} h={65} on={()=>{st.auto=!st.auto;toast(st.auto?'AutoMap started':'AutoMap stopped')}} label="AutoMap"/>

@@ -135,3 +135,10 @@ adb logcat -d | grep -E "ReactNativeJS|AndroidRuntime" | grep -v "Mbgl-HttpReque
 adb logcat -d | grep "ReactNativeJS" | grep "TG " | grep -v "TG fix" | sed 's/.*ReactNativeJS: //' | awk '!seen[$0]++' > shots/tg.txt
 adb shell pidof com.tandemgps > shots/alive.txt || echo DEAD > shots/alive.txt
 test -s shots/alive.txt && ! grep -q DEAD shots/alive.txt && [ "$LAUNCH_FAILS" -eq 0 ] && [ "$CRASHES" -eq 0 ]
+# Contact sheets of the demo video, printed into the log so the run can be reviewed without downloading.
+if command -v ffmpeg >/dev/null; then
+  for part in 1 2; do
+    ffmpeg -v error -y -i shots/speedometer_demo.mp4 -vf "fps=1/4,scale=300:-1,tile=6x4" -frames:v 2 -q:v 6 shots/sheet%d.jpg
+  done
+  for f in shots/sheet*.jpg; do echo "SHEET_BEGIN $f"; base64 -w 0 "$f"; echo; echo "SHEET_END"; done
+fi
