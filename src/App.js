@@ -92,7 +92,7 @@ function LiveMap({style,rect,k,showRoute}){const cam=useRef(null);const [shape,s
    if(st.trail.length>1)setShape({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:st.trail}})},220);return()=>clearInterval(id)},[rect,k]);
  const box=rect?{left:rect[0]*k,top:rect[1]*k,width:rect[2]*k,height:rect[3]*k}:{left:-2000,top:0,width:10,height:10};
  return <View pointerEvents="none" style={{position:'absolute',...box,overflow:'hidden'}}>
-  <MapLibreGL.MapView style={{flex:1}} mapStyle={style} logoEnabled={false} attributionEnabled={false} compassEnabled={false} zoomEnabled={false} scrollEnabled={false} rotateEnabled={false} pitchEnabled={false}>
+  <MapLibreGL.MapView style={{flex:1}} surfaceView mapStyle={style} logoEnabled={false} attributionEnabled={false} compassEnabled={false} zoomEnabled={false} scrollEnabled={false} rotateEnabled={false} pitchEnabled={false}>
    <MapLibreGL.Camera ref={cam} defaultSettings={{centerCoordinate:[st.lng||-98.49,st.lat||29.42],zoomLevel:16.3,pitch:58}}/>
    {shape&&showRoute&&<MapLibreGL.ShapeSource id="route" shape={shape}><MapLibreGL.LineLayer id="r0" style={{lineColor:'#88FA4E',lineWidth:2,lineOffset:-3,lineJoin:'round',lineCap:'round'}}/><MapLibreGL.LineLayer id="r1" style={{lineColor:'#88FA4E',lineWidth:2,lineOffset:3,lineJoin:'round',lineCap:'round'}}/></MapLibreGL.ShapeSource>}
   </MapLibreGL.MapView>
