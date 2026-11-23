@@ -89,17 +89,22 @@ def main():
         sp += ramp(120, 75, 10) + ramp(75, 0, 16)
 
     d, out, i = 0.0, [], 0
-    for v in sp:
-        d = min(d + v * MPH, cum[-1])
+    if mode == 'walk' and hwy is not None:
+        d = hwy  # the walk's speed checks run on I-90, where the road is smooth
+    def at(d):
+        nonlocal i
         while i < len(cum) - 2 and cum[i + 1] < d:
             i += 1
-        seg = cum[i + 1] - cum[i] or 1.0
-        t = (d - cum[i]) / seg
-        out.append(f'{pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t:.6f} '
-                   f'{pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t:.6f}')
+        t = (d - cum[i]) / (cum[i + 1] - cum[i] or 1.0)
+        return (f'{pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t:.6f} '
+                f'{pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t:.6f}')
+    first = at(d)
+    for v in sp:
+        d = min(d + v * MPH, cum[-1])
+        out.append(at(d))
     log(f'{mode}: {len(out)} fixes, {d:.0f} m driven, I-90 reached at fix '
         f'{next((n for n, x in enumerate(sp) if sum(sp[:n + 1]) * MPH >= (hwy or 1e9)), None)}')
-    print(f'{pts[0][0]:.6f} {pts[0][1]:.6f}')
+    print(first)
     print('\n'.join(out))
 
 

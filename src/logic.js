@@ -10,8 +10,8 @@ export function bearing(a,b){const r=Math.PI/180,y=Math.sin((b[0]-a[0])*r)*Math.
 export function styleForApp(style){const layers=[];(style.layers||[]).forEach(l=>{const id=l.id.toLowerCase(),o={...l,paint:{...(l.paint||{})}};
  if(l.type==='fill-extrusion')return;
  if(l.type==='background')o.paint['background-color']='#3a3a3a';
- else if(l.type==='fill')o.paint['fill-color']=id.includes('water')?'#262a2d':'#363636';
- else if(l.type==='line')o.paint['line-color']=id.includes('water')?'#262a2d':'#555555';
+ else if(l.type==='fill'){o.paint['fill-color']=id.includes('water')?'#262a2d':'#363636';delete o.paint['fill-pattern']}
+ else if(l.type==='line'){o.paint['line-color']=id.includes('water')?'#262a2d':'#555555';delete o.paint['line-dasharray'];delete o.paint['line-pattern']}
  else if(l.type==='symbol'&&l.layout&&l.layout['text-field']){o.paint['text-color']='#c4c4c4';o.paint['text-halo-color']='#222222';o.paint['text-halo-width']=1}
  layers.push(o)});return{...style,layers}}
 /* Fastest believable speed in m/s, about 335 mph. Anything above it is a GPS jump, like a stale first fix. */
