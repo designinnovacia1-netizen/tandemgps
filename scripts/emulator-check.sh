@@ -17,21 +17,35 @@ adb logcat -d -b crash > shots/crash_launches.txt
 adb shell pidof com.tandemgps >/dev/null || { adb shell monkey -p com.tandemgps -c android.intent.category.LAUNCHER 1 >/dev/null; sleep 7; }
 W=$(adb shell wm size | awk '{print $3}' | cut -dx -f1 | tr -d '\r'); H=$(adb shell wm size | awk '{print $3}' | cut -dx -f2 | tr -d '\r')
 K=$(awk "BEGIN{a=$W/397;b=$H/801;print (a<b)?a:b}"); OX=$(awk "BEGIN{print ($W-397*$K)/2}"); OY=$(awk "BEGIN{print ($H-801*$K)/2}")
-tap(){ adb shell input tap "$(awk "BEGIN{printf \"%d\",$OX+$1*$K}")" "$(awk "BEGIN{printf \"%d\",$OY+$2*$K}")"; sleep "${3:-2}"; }
+# Login and Join art is 414x916, the other plates 397x801. U picks which grid tap() uses.
+KL=$(awk "BEGIN{a=$W/414;b=$H/916;print (a<b)?a:b}"); OXL=$(awk "BEGIN{print ($W-414*$KL)/2}"); OYL=$(awk "BEGIN{print ($H-916*$KL)/2}")
+U=P
+tap(){ if [ "$U" = L ]; then local k=$KL ox=$OXL oy=$OYL; else local k=$K ox=$OX oy=$OY; fi
+  adb shell input tap "$(awk "BEGIN{printf \"%d\",$ox+$1*$k}")" "$(awk "BEGIN{printf \"%d\",$oy+$2*$k}")"; sleep "${3:-2}"; }
 shot(){ adb exec-out screencap -p > "shots/$1.png"; echo "$1 $(adb shell dumpsys window | grep -m1 mCurrentFocus | tr -d '\r')" >> shots/focus.txt; }
 backkey(){ adb shell input keyevent 4; sleep 2; if ! adb shell dumpsys window | grep -m1 mCurrentFocus | grep -q com.tandemgps; then echo "left the app at back key" >> shots/focus.txt; adb shell monkey -p com.tandemgps -c android.intent.category.LAUNCHER 1 >/dev/null; sleep 5; fi; }
-LAT=29.4241
-fix(){ adb emu geo fix -98.4936 "$LAT" >/dev/null; }
-drive(){ for i in $(seq 1 "$1"); do LAT=$(awk "BEGIN{printf \"%.6f\",$LAT+$2}"); fix; sleep 1; done; }
+# Road-following drives in Sheridan, WY (Coffeen Ave onto I-90), one fix per second.
+python3 scripts/route.py walk > shots/route_walk.txt 2> shots/route_log.txt
+python3 scripts/route.py demo > shots/route_demo.txt 2>> shots/route_log.txt
+cat shots/route_log.txt
+read LON LAT < shots/route_walk.txt
+fix(){ adb emu geo fix "$LON" "$LAT" </dev/null >/dev/null; }
+# drive FILE FIRST LAST: feed lines FIRST..LAST of a route file, one per second.
+drive(){ while read -r LON LAT; do fix; sleep 1; done < <(sed -n "$2,$3p" "$1"); }
 # Press a button by its accessibility label, falling back to screen coordinates if the UI will not dump.
 press(){ local label="$1" x="$2" y="$3" wait="${4:-2}"; local c
-  c=$(timeout 15 adb shell "uiautomator dump /sdcard/u.xml >/dev/null 2>&1; cat /sdcard/u.xml" 2>/dev/null | tr -d '\r' | python3 scripts/find_label.py "$label")
+  for t in 1 2 3; do
+    c=$(timeout 15 adb shell "uiautomator dump /sdcard/u.xml >/dev/null 2>&1; cat /sdcard/u.xml" 2>/dev/null | tr -d '\r' | python3 scripts/find_label.py "$label")
+    [ -n "$c" ] && break; sleep 1
+  done
+  [ -z "$c" ] && adb shell cat /sdcard/u.xml > "shots/dump_$(echo "$label" | tr -c 'A-Za-z0-9' _).xml" 2>/dev/null
   if [ -n "$c" ]; then echo "press $label by label at $c" >> shots/walk.txt; adb shell input tap $c; sleep "$wait"
   else echo "press $label by coordinates $x,$y (label not found)" >> shots/walk.txt; tap "$x" "$y" "$wait"; fi; }
 fix; sleep 8
 typein(){ adb shell input text "$1"; sleep 1; }
 hidekb(){ if adb shell dumpsys input_method | grep -q "mInputShown=true"; then adb shell input keyevent 4; sleep 1; fi; }
 # Fresh install is logged out, so the app opens on Login. Register, log out, log back in.
+U=L
 shot 00a_login
 press Register 208 720; shot 00b_join
 press "User name" 208 276; typein Razer; hidekb
@@ -55,6 +69,7 @@ press Logout 74 65 3; shot 00f_logged_out
 press Email 208 380; typein razer@tandemgps.com; hidekb
 press Password 208 450; typein ride2026; hidekb
 press "Log in" 207 655 4
+U=P
 shot 01_profile
 press Rides 200 500; shot 02_manage_rides
 press SportRide 170 322; shot 03_manage_rides_selected
@@ -76,18 +91,19 @@ tap 5 620 3; shot 13_prompt2
 press "Go back" 60 80 2; shot 14_file_share
 press Share 200 735 7; shot 15_shared_ride
 press "Lets go" 195 735 4; shot 16_maplink_stationary
-drive 12 0.00027; shot 17_maplink_moving_60mph
-drive 8 0.00047; shot 18_maplink_moving_115mph
+drive shots/route_walk.txt 2 13; shot 17_maplink_moving_60mph
+drive shots/route_walk.txt 14 21; shot 18_maplink_moving_115mph
 sleep 8; shot 19_maplink_stopped
 # Demo video: create a speedo in Create LSS, then ride it on the connected TrackMode map.
 adb shell am force-stop com.tandemgps; sleep 1
+read LON LAT < shots/route_demo.txt; fix; sleep 2
 adb shell monkey -p com.tandemgps -c android.intent.category.LAUNCHER 1 >/dev/null; sleep 8
 press Profile 200 70 3
 press Rides 200 500 3
 press "Lets go" 200 735 4
 press "Create LSS" 40 730 3
 adb shell rm -f /sdcard/demo.mp4
-adb shell screenrecord --bit-rate 8000000 --time-limit 170 /sdcard/demo.mp4 &
+adb shell screenrecord --bit-rate 8000000 --time-limit 180 /sdcard/demo.mp4 &
 REC=$!
 sleep 3
 digit(){ case $1 in 0) tap 337 501 1;; 1) tap 62 500 1;; 2) tap 80 531 1;; 3) tap 105 554 1;; 4) tap 136 571 1;; 5) tap 176 578 1;; 6) tap 213 578 1;; 7) tap 253 572 1;; 8) tap 288 554 1;; 9) tap 318 532 1;; esac; }
@@ -95,8 +111,9 @@ band(){ tap "$1" "$2" 2; for d in $(echo "$3" | grep -o .); do digit "$d"; done;
 band 254 312 30; band 194 300 60; band 290 276 90; band 278 360 200
 press Filename 197 628 2; typein "Demo%sSpeedo"; hidekb; sleep 2
 press "Lets go" 200 725 5
-# about 15, 45, 75, 120 mph, back down, stop
-for step in "7 0.000060" "7 0.000181" "7 0.000301" "8 0.000482" "6 0.000301" "6 0.000181"; do drive $step; done
+# Coffeen Ave at city speed, up the on-ramp onto I-90, up to 120 mph, back down, stop
+read LON LAT < shots/route_demo.txt; fix; sleep 2
+drive shots/route_demo.txt 2 999
 for i in $(seq 1 10); do fix; sleep 1; done
 sleep 2
 # Stop the recorder on the phone itself so it finishes writing the file, then wait for it to exit.
